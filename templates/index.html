@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}tommy.isnt.online{% endblock %}
+
+{% block content %}
+    <h1 class="title">Recent Posts</h1>
+    <ul>
+    {% for post in posts %}
+        <li>
+            <h2 class="posttitle"><a href="/post/{{ post.slug }}">{{ post.title }}</a></h2>
+            <p class="posted">{{ post.date }}</p>
+            <p>{{ post.content[:100] }}...</p>
+        </li>
+    {% endfor %}
+    </ul>
+{% endblock %}

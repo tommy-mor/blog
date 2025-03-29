@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}tommy.isnt.online{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="http://www.aaronsw.com/weblog/index.xml"/>
+</head>
+<body>
+    <h1 class="fronttitle">
+        <a class="hilite" href="/" title="by Tommy Morriss">tommy.isnt.online</a>
+    </h1>
+    <p class="byline" style="text-align: left; padding-left: 1em; margin-top: 0; margin-bottom: 0">
+        by <a href="/">Tommy Morriss</a>
+    </p>
+    <table class="main">
+        <tr>
+            <td class="content">
+                {% block content %}{% endblock %}
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

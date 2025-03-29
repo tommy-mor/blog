@@ -3,15 +3,20 @@ import os
 import markdown
 from datetime import datetime
 import re
+from jinja2 import Environment, FileSystemLoader
 
 # Define URLs and their corresponding classes
 urls = (
     '/', 'Index',
-    '/post/(.*)', 'Post'
+    '/post/(.*)', 'Post',
+    '/static/(.*)', 'Static'
 )
 
 # Directory where markdown files are stored
 POSTS_DIR = 'posts'
+
+# Set up Jinja2 environment
+env = Environment(loader=FileSystemLoader('templates'))
 
 # Function to read posts from markdown files
 def get_posts():
@@ -39,11 +44,8 @@ def get_posts():
 class Index:
     def GET(self):
         posts = get_posts()
-        html = "<h1>My Blog</h1><ul>"
-        for post in posts:
-            html += f'<li><a href="/post/{post["slug"]}">{post["title"]} - {post["date"]}</a></li>'
-        html += "</ul>"
-        return html
+        template = env.get_template('index.html')
+        return template.render(posts=posts)
 
 # Define the Post class to handle individual blog posts
 class Post:
@@ -51,12 +53,26 @@ class Post:
         posts = get_posts()
         post = next((p for p in posts if p['slug'] == slug), None)
         if post:
-            return f"<h1>{post['title']}</h1><p>{post['content']}</p><a href='/'>Back to home</a>"
+            template = env.get_template('post.html')
+            return template.render(post=post)
         else:
             return "Post not found."
 
+# Class to serve static files
+class Static:
+    def GET(self, filename):
+        try:
+            with open(os.path.join('static', filename), 'rb') as f:
+                return f.read()
+        except FileNotFoundError:
+            return web.notfound()
+
 # Create the application
 app = web.application(urls, globals())
+app = app.wsgifunc()
+
+# Use StaticMiddleware to serve static files
+app = web.httpserver.StaticMiddleware(app)
 
 if __name__ == "__main__":
-    app.run()
+    web.httpserver.runsimple(app, ("0.0.0.0", 8080))

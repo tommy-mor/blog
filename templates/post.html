@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - My Blog{% endblock %}
+
+{% block content %}
+    <h1 class="title">{{ post.title }}</h1>
+    <p class="posted">{{ post.date }}</p>
+    <div class="content">
+        {{ post.content | safe }}
+    </div>
+    <div class="byline">Posted by Author</div>
+{% endblock %}
