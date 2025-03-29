@@ -22,20 +22,19 @@ env = Environment(loader=FileSystemLoader('templates'))
 def get_posts():
     posts = []
     for filename in os.listdir(POSTS_DIR):
-        if filename.endswith('.md'):
+        if filename.endswith('.html'):
             filepath = os.path.join(POSTS_DIR, filename)
             with open(filepath, 'r') as f:
                 # Read the first line as the title
                 title = f.readline().strip()
                 # Read the rest of the file as content
                 content = f.read()
-                html_content = markdown.markdown(content)
                 # Parse the date from the filename in YYYYMMDD format
                 date_str = filename.split('_')[0]
                 date = datetime.strptime(date_str, '%Y%m%d').strftime('%Y-%m-%d')
                 # Generate a slug from the title
                 slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')
-                posts.append({'title': title, 'content': html_content, 'date': date, 'slug': slug})
+                posts.append({'title': title, 'content': content, 'date': date, 'slug': slug})
     # Sort posts by date, newest first
     posts.sort(key=lambda x: x['date'], reverse=True)
     return posts
