@@ -18,6 +18,7 @@ h1.fronttitle {
         line-height: 2em;
         margin-bottom: 0em; 
         text-align: left;
+        font-family: "Georgia";
 }
 
 h1.title {
@@ -40,13 +41,24 @@ h2 {
         font-weight:normal;
 }
 
-body { font-family: "Georgia"; background-color: #ffd;}
+body { font-family: "Georgia"; background-color: #e6e6fa;}
 
 :link { color: #68693F; text-decoration: none; border-bottom: 1px dotted #ccc;}
 :visited { color: #68693F; text-decoration: none; }
 
-h1.title { text-align: right; }
-h1.title a:link, h1.title a:visited, h1.fronttitle a:link, h1.fronttitle a:visited { background-color: #ffa; padding: .3em; padding-top: 3em; text-decoration: none; color: #C3C36E; font-weight: bold; text-transform: uppercase; letter-spacing: .1em; font-family: "Thomas Paine", Georgia; border-bottom: none;}
+h1.title { text-align: left; }
+h1.title a:link, h1.title a:visited, h1.fronttitle a:link, h1.fronttitle a:visited { 
+    background-color: #9470db2b;
+    padding: .3em; 
+    padding-top: 3em; 
+    text-decoration: none; 
+    color: #9370db; 
+    font-weight: bold; 
+    text-transform: uppercase; 
+    letter-spacing: .1em; 
+    font-family: "Thomas Paine", Georgia; 
+    border-bottom: none;
+}
 #banner { margin-left: 8em; }
 .content { max-width: 30em; margin-left: 8em;}
 hr { border: 0px;}
@@ -54,16 +66,16 @@ hr:after { content: ""; }
 hr + p:first-letter { font-size: 3em; line-height: 1em; margin-right: 2px; display: block; float: left}
 
 .comment { color: #666;}
-.posted { text-align: right; color: #666; font-style: italic; }
+.posted { text-align: left; color: #666; font-style: italic; }
 .posted :link, .posted :visited { text-decoration: none; color: #666; border-bottom: 1px dotted;}
 td { vertical-align: top;}
 h2.posttitle :link, h2.posttitle :visited { text-decoration: none; color: black;}
 
-.byline { text-align: right; color: #888; margin-right: 1em;}
-.byline :link, .byline :visited { color: #666; text-decoration: none; background: #ffc;}
+.byline { text-align: left; color: #888; margin-right: 1em;}
+.byline :link, .byline :visited { color: #666; text-decoration: none; background: #e6e6fa;}
 table.main { width: 100%;}
 td.content { padding-left: 4em; width: 30em}
-.sidebar { padding-left: 4em; text-align: right; color: #777; padding-right: .5em; max-width: 20em; float: right;}
+.sidebar { padding-left: 4em; text-align: left; color: #777; padding-right: .5em; max-width: 20em; float: right;}
 .sidebar :link, .sidebar :visited { color: #8B8A64; text-decoration: none; border-bottom: 1px dotted;}
 
 #comments_show :link, #comments_show :visited, .box :link, .box :visited { color: #555; text-decoration: none; background-color: #D2D6BC; padding: .5em; margin: -.5em; border-bottom: none;}
@@ -75,6 +87,6 @@ ul, ol { margin-left: 3em;}
 div.footnotes { color: #666; padding-top: 0;}
 
 .epigraph { padding-left: 10%; color: #666;  }
-.attribution { text-align: right; font-style: italic;}
+.attribution { text-align: left; font-style: italic;}
 
 .footertag { float: right; padding-right: 2em; }
