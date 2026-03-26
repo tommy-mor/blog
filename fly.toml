@@ -4,16 +4,20 @@
 #
 
 app = 'blog-aged-tree-2613'
-primary_region = 'bos'
+primary_region = 'ewr'
 
 [build]
+
+[mounts]
+  source = "blog_data"
+  destination = "/app/data"
 
 [http_service]
   internal_port = 8080
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
 [[vm]]
