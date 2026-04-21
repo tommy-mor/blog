@@ -1,12 +1,3 @@
-<!-- EDITOR'S NOTES FROM CLAUDE
-     Changes fall into three buckets:
-     1. Typo fixes (silent unless the sentence changed meaning)
-     2. Finishing hanging sentences / fixing parses that didn't close
-     3. Part 2 rewrite (flagged extensively — revert freely, this is your post)
-
-     Unclosed <p> tags preserved throughout as your deliberate style choice.
--->
-
 Eval Eval
 
 <h2><a href="#pt1">Part 1: Url, Router, etc</a></h2>
@@ -17,7 +8,6 @@ Eval Eval
   technically optional? that's pretty baller IMO.
   Of course, tooling works better if you do close them.
   But I think it's cooler not to.
-<!-- typo: "techincally" → "technically"; also "it" → "is" so the sentence parses -->
 
 <p>
 
@@ -27,7 +17,6 @@ encodings are not, like base64. Its a compromise between machine precision and
 human readability. The no-space rule: machine readable. The a-zA-Z
 rule: human readable. Https optional: human readable. '.' delimiters in
   domain section: machine readable.
-<!-- typos: "delimters", "domian" -->
 
 <p>
   It threads the needle perfectly.
@@ -42,13 +31,9 @@ So url's are a beautiful thing, and exist to be shareable artifacts to
   recently: Want to go https://<b>g</b>ithub.com/<b>t</b>ommy-mor/<b>b</b>log?
   type <b> g t b </b>. Which corresponds to the first letter of
   each segment. It will suggest the right url. Very neat.
-<!-- fixed: you had a stray </pre> after "blog" that was breaking the render -->
 
 <p>But they are naming a resource. They are pointing at something you
   want to share.
-<!-- your original sentence trailed off at "They are pointing a" —
-     I guessed at the completion. This is the pivot into the router
-     critique, so it should land whatever thought you were reaching for. -->
 
 <hr>
 <p>Routing in every language
@@ -66,7 +51,6 @@ So url's are a beautiful thing, and exist to be shareable artifacts to
 <p>
 Notice the names next to each other. The route pattern (/post/:slug), and the
 function name symbol (post_page).
-<!-- typos: "eachother", "funciton" -->
 
 <p>
   Reitit from clojure isn't much better. Deeply nested data literals that
@@ -85,7 +69,6 @@ function name symbol (post_page).
 <p>
   Python's Fastapi (while being a massive improvement over flask)
   has @decorator bindings with the same problem. Two names.
-<!-- grammar: original had "has ... have" which was a stray verb -->
 
 <pre><code class="language-python">from fastapi import FastAPI
 
@@ -108,7 +91,6 @@ async def post_page(slug: str):
   cache layer.
   Also, the nested nature of urls makes accounting for resource
   hierarchy natural.
-<!-- typo: "heirarchy" -->
 
 <p><i>BUT</i>
 
@@ -118,10 +100,6 @@ async def post_page(slug: str):
   and a handler dispatch, and for those 40 milliseconds you've paid
   for it with a second name that has to stay in sync with the first
   one forever.
-<!-- rewrite: your original "Their double the verbal RAM name can be avoided"
-     wasn't parsing, and this is the pivot sentence of the whole post.
-     I tried to hit the same idea (POST URLs are pure tax) with concrete
-     images — history, cache, Slack. Cut what you don't want. -->
 
 <p>
 <b>At the very least, POSTs should point to a name directly.</b>
@@ -133,12 +111,7 @@ aistudio.google.com and you'll see URLs like:
 <p>
 This pattern is self-evident from the URL: it's a Java namespace and
 a method name. That's it. No route DSL, no pattern matching, no second
-name to keep in sync. The smartest web infrastructure people in the
-world, when they don't need human-readable URLs, drop the pretense
-immediately and just name the function.
-<!-- reframed the aistudio bit as "evidence" rather than "example" —
-     turning it from an anecdote into a credibility anchor. Also pulled
-     the long URL into a <pre> so it doesn't wrap mid-segment. -->
+name to keep in sync.
 
 <hr>
 <p>
@@ -248,18 +221,9 @@ app: every new permission-gated feature, you pay the tax again. The
 code you write for authorization grows with (number of features) ×
 (number of places the check has to live), when it should grow with
 just (number of features).
-<!-- folded your "TODO insert point about scaling laws" into this
-     paragraph. Your trailing "and per" suggested a second multiplier
-     (per-UI? web + mobile + API?) — I left that implicit in "number
-     of places the check has to live" so you can expand or cut. -->
 
-<p>
-What if the render-time check <i>was</i> the handler-time check? What
-if the thing you rendered into the form was itself the permission?
-Hold that thought.
-<!-- HOOK FOR PART 3: capability tickets. I wrote one sentence of
-     gesture so Part 2 has somewhere to point. Cut if you'd rather
-     end Part 2 on the scaling-laws beat. -->
+TODO refine point about scaling laws. have real multipliers. 
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>hljs.highlightAll()</script>
