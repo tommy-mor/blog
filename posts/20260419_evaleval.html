@@ -1,5 +1,6 @@
 Eval Eval
 
+<h2><a href="#pt1">Part 1: Url, Router, etc</a></h2>
 <hr>
 <p>
   Did you know you don't have to close
@@ -109,18 +110,69 @@ This pattern solves the "one handler two names" problem
 <hr>
 <p>
   What is the difference between:
+<table>
+  <thead>
+    <tr>
+      <th>RPC</th>
+      <th>Eval</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>URL</b></td>
+      <td><b>URL</b></td>
+    </tr>
+    <tr>
+      <td><code>/$rpc/ns/CountTokens</code></td>
+      <td><code>/$eval</code></td>
+    </tr>
+    <tr>
+      <td><b>Content-Type</b></td>
+      <td><b>Content-Type</b></td>
+    </tr>
+    <tr>
+      <td><code>application/json+protobuf</code></td>
+      <td><code>application/java</code></td>
+    </tr>
+    <tr>
+      <td><b>Body</b></td>
+      <td><b>Body</b></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-json">["models/gemini-3.1-pro-preview",
+ [[[[null,"hello "]],"user"]]]</code></pre></td>
+      <td><pre><code class="language-java">ns.CountTokens(
+  "models/gemini-3.1-pro-preview",
+  Array.of(Map.of("user","hello"))
+)</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
-  URL: /$rpc/ns/CountTokens
-  CONTENT-TYPE: application/json+protobuf
-  BODY : ["models/gemini-3.1-pro-preview",[[[[null,"hello "]],"user"]]]
+<h2><a href="#pt2"> Part 2: Auth(z) duplication </a></h2>
+<hr>
+<p>
+  Suppose a todolist (github.com/tommy-mor/todo-tournament) app with users and multiple resource types.
+  When you list a todo, only the logged in user is allowed to delete a
+  todo. So you need to run your ACL/Authz check, and then
+  conditionally display the delete button, or maybe add a "disabled"
+  class to the dom. 
 
-  and
+  <p>
+  Then you point the form to a handler somehow, and then you execute
+  the side effect (delete the TODO). But wait! The attacker can post
+  to any URL!  (claude: is this patronizing or good pedagagoy)
 
-  URL: /$eval
-  CONTENT-TYPE: application/java
-  BODY: ns.CountTokens("models/gemini-3.1-pro-preview", Array.of(Map.of("user","hello")))
+  <p>
+  Now you have to run the ACL/Authz check again. 
 
+  (claude: im getting lost. can you please rewriet this file for me
+  and add html comments with precise feedback?)
+<p>
   
+
+
+  TODO insert point about scaling laws. per feature code, and per 
 
 
 
