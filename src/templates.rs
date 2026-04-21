@@ -28,23 +28,19 @@ fn page_inner(content: Markup) -> Markup {
         h1.fronttitle {
             a.hilite href="/" title="by Tommy Morriss" { "Blog" }
         }
-        table.main {
-            tr {
-                td.content {
-                    (content)
-                }
-            }
-        }
+        (content)
     }
 }
 
 pub fn index(posts: &[Post]) -> Markup {
     base("tommy.isnt.online", None, html! {
-        @for post in posts {
-            h2 {
-                a href=(format!("/post/{}", post.slug)) { (post.title) }
+        div.content-panel {
+            @for post in posts {
+                h2 {
+                    a href=(format!("/post/{}", post.slug)) { (post.title) }
+                }
+                p.posted { (post.date.format("%Y-%m-%d").to_string()) }
             }
-            p.posted { (post.date.format("%Y-%m-%d").to_string()) }
         }
     })
 }
@@ -52,14 +48,16 @@ pub fn index(posts: &[Post]) -> Markup {
 pub fn post(post: &Post, hits: u64, viewers: usize) -> Markup {
     base(&post.title, Some(&post.slug), html! {
         h1.title { (post.title) }
-        p.byline {
-            (post.date.format("%Y-%m-%d").to_string())
-            " · "
-            (hits) " views"
-            " · "
-            span #viewer-count { (viewers) " reading now" }
+        div.content-panel {
+            p.byline {
+                (post.date.format("%Y-%m-%d").to_string())
+                " · "
+                (hits) " views"
+                " · "
+                span #viewer-count { (viewers) " reading now" }
+            }
+            (PreEscaped(&post.content))
         }
-        (PreEscaped(&post.content))
         script src="/static/cursor.js" {}
     })
 }

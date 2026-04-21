@@ -33,19 +33,34 @@ html {
 body { font-size: 87.5%;
 	font-family: "Georgia";
 	background-color: #e6e6fa;
-	max-width: 500px;
-	margin-left: auto;
-	margin-right: auto;
+	margin: 0;
 	width: 100%;
 	box-sizing: border-box;
 	padding-left: 1.5em;
 	padding-right: 1.5em;
 /*  background: url("http://24ways.org/examples/compose-to-a-vertical-rhythm/underline.gif");*/
 }
+.content-panel {
+	max-width: 500px;
+	width: 100%;
+	margin-left: auto;
+	margin-right: auto;
+	box-sizing: border-box;
+	min-width: 0;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+}
+.content-panel pre {
+	overflow-x: auto;
+	max-width: 100%;
+	min-width: 0;
+	-webkit-overflow-scrolling: touch;
+}
 html>body { font-size: 12px;}
-p, ol,ul,  pre { font-size: 1em; margin-bottom: 1.5em; line-height: 1.5em;}
+p, ol,ul { font-size: 1em; margin-bottom: 1.5em; line-height: 1.5em;}
+pre { font-size: 1em; margin-bottom: 1.5em; line-height: 1.5em; }
 sup { vertical-align: super; line-height: .1em}
-pre { padding-left: 1em; }
+pre { padding-left: 1em; box-sizing: border-box; }
 
 h1.fronttitle {
         font-size:3em;
@@ -65,7 +80,9 @@ h1.title {
         font-size:1.5em;
         line-height: 1em;
         margin-top: .5em;
-        margin-bottom: .5em; 
+        margin-bottom: .5em;
+        text-align: center;
+        max-width: none;
 }
 
 h1 {
@@ -84,7 +101,6 @@ h2 {
 :link { color: #68693F; text-decoration: none; border-bottom: 1px dotted #ccc;}
 :visited { color: #68693F; text-decoration: none; }
 
-h1.title { text-align: left; }
 h1.title a:link, h1.title a:visited, h1.fronttitle a:link, h1.fronttitle a:visited { 
     background-color: #9470db2b;
     padding: .3em; 
@@ -135,7 +151,9 @@ div.footnotes { color: #666; padding-top: 0;}
 pre code.hljs {
   display: block;
   overflow-x: auto;
-  padding: 1em
+  max-width: 100%;
+  padding: 1em;
+  box-sizing: border-box;
 }
 code.hljs {
   padding: 3px 5px
