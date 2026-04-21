@@ -4,8 +4,8 @@ Eval Eval
 <hr>
 <p>
   Did you know you don't have to close
-  html tags? that the parser is flexible enough that closing tags is
-  technically optional? that's pretty baller IMO.
+  html tags? that the parser is flexible enough that closing tags it
+  techincally optional? that's pretty baller IMO.
   Of course, tooling works better if you do close them.
   But I think it's cooler not to.
 
@@ -28,7 +28,7 @@ rule: human readable. Https optional: human readable. '.' delimiters in
 So url's are a beautiful thing, and exist to be shareable artifacts to
   be entered into a url bar or clicked. Chromium and its derived
   browsers (including on mobile) have this shortcut, I learned
-  recently: Want to go https://<b>g</b>ithub.com/<b>t</b>ommy-mor/<b>b</b>log?
+  recently: Want to go https://<b>g</b>ithub.com/<b>t</b>ommy-mor/<b>b</b>log</pre>?
   type <b> g t b </b>. Which corresponds to the first letter of
   each segment. It will suggest the right url. Very neat.
 
@@ -101,12 +101,11 @@ async def post_page(slug: str):
   for it with a second name that has to stay in sync with the first
   one forever.
 
-<p>
-<b>At the very least, POSTs should point to a name directly.</b>
-Google already does this internally — open the network tab on
-aistudio.google.com and you'll see URLs like:
+<b>At the very least, post should point to a name
+directly.</b> https://aistudio.google.com example which pointed to a
+java namespace and then methodname as a url.
 
-<pre><code>https://aistudio.google.com/$rpc/google.internal.alkali.applications.makersuite.v1.MakerSuiteService/CountTokens</code></pre>
+https://aistudio.google.com/$rpc/google.internal.alkali.applications.makersuite.v1.MakerSuiteService/CountTokens
 
 <p>
 This pattern is self-evident from the URL: it's a Java namespace and
@@ -157,62 +156,29 @@ name to keep in sync.
 
 <h2><a href="#pt2"> Part 2: Auth(z) duplication </a></h2>
 <hr>
-
-<!--
-PART 2 REWRITE — this is the section you said you were getting lost in.
-I reshaped the whole thing. The original had the right shape of the
-argument (render-side check + handler-side check = duplication) but the
-beats weren't landing in order. Here's what changed:
-
-  1. Set up the example (todo app, ownership permission) cleanly.
-  2. Render side first, handler side second. One beat each.
-  3. Named the thing: "you write the same authz check twice."
-  4. Made it explicitly parallel to Part 1 — "two authz checks for
-     one permission" rhymes with "two names for one method." That
-     rhyme is the reason Part 1 and Part 2 belong in the same post.
-  5. Folded in your "scaling laws" TODO as the closing beat of the
-     section, since it's the same point (per-feature tax) at a
-     different magnification.
-  6. Added a one-sentence hook at the end pointing toward the
-     evaleval answer. You haven't written Part 3 yet; I wanted to
-     leave a handhold for it.
-
-On your "patronizing or good pedagogy?" question:
-  The "But wait! The attacker can post to any URL!" had a slight
-  infomercial energy — the exclamation and the gotcha framing. The
-  observation itself is worth making, because "UI hiding isn't a
-  security boundary" is a real thing that trips up real developers.
-  But the reader of YOUR blog probably already knows this, so I
-  stated it matter-of-factly. If your intended audience is more
-  "people who build Rails apps and don't think about the wire,"
-  dial the pedagogy back up.
--->
-
 <p>
-Suppose a todo list app
-(<a href="https://github.com/tommy-mor/todo-tournament">github.com/tommy-mor/todo-tournament</a>)
-with users and multiple resource types. Only the owner of a todo is
-allowed to delete it.
+  Suppose a todolist (github.com/tommy-mor/todo-tournament) app with users and multiple resource types.
+  When you list a todo, only the logged in user is allowed to delete a
+  todo. So you need to run your ACL/Authz check, and then
+  conditionally display the delete button, or maybe add a "disabled"
+  class to the dom. 
 
-<p>
-When you render the list, you run an authorization check: is this user
-allowed to delete this todo? If yes, render the delete button. If no,
-hide it, or slap a <code>disabled</code> class on it, or whatever your
-design system prefers.
+  <p>
+  Then you point the form to a handler somehow, and then you execute
+  the side effect (delete the TODO). But wait! The attacker can post
+  to any URL!  (claude: is this patronizing or good pedagagoy)
 
-<p>
-Then the user clicks the button, which POSTs to a handler. And now you
-run the exact same authorization check again — because the URL is
-public and the handler is reachable by anyone who can type a
-<code>curl</code> command. Hiding the button in the UI is a
-convention, not a security boundary.
+  <p>
+  Now you have to run the ACL/Authz check again. 
 
+  (claude: im getting lost. can you please rewriet this file for me
+  and add html comments with precise feedback?)
 <p>
-So for every permission-gated action in your app, you write the authz
-check twice. Once in the template, once in the handler. They can
-drift. When they drift, you have a bug — either a button that does
-nothing (annoying), or a button that shouldn't exist but the handler
-lets it through anyway (bad).
+  
+
+
+  TODO insert point about scaling laws. per feature code, and per 
+
 
 <p>
 This is the Part 1 problem at a different layer.
@@ -223,7 +189,6 @@ code you write for authorization grows with (number of features) ×
 just (number of features).
 
 TODO refine point about scaling laws. have real multipliers. 
-
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>hljs.highlightAll()</script>
