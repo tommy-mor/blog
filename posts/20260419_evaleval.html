@@ -89,7 +89,40 @@ async def post_page(slug: str):
   GET requests with clean urls also interact very well with browser history and the
   cache layer.
   Also, the nested nature of urls makes accounting for resource
-  heirarchy. 
+  heirarchy natural. 
+
+<p><i>BUT</i>
+
+<p> POST requests aren't shared. They are pointed to by forms. They
+are called by api clients. Their double the verbal RAM name can be avoided.
+
+<b>At the very least, post should point to a name
+directly.</b> https://aistudio.google.com example which pointed to a
+java namespace and then methodname as a url.
+
+https://aistudio.google.com/$rpc/google.internal.alkali.applications.makersuite.v1.MakerSuiteService/CountTokens
+
+This pattern is self evident from that URL.
+
+This pattern solves the "one handler two names" problem
+
+<hr>
+<p>
+  What is the difference between:
+
+  URL: /$rpc/ns/CountTokens
+  CONTENT-TYPE: application/json+protobuf
+  BODY : ["models/gemini-3.1-pro-preview",[[[[null,"hello "]],"user"]]]
+
+  and
+
+  URL: /$eval
+  CONTENT-TYPE: application/java
+  BODY: ns.CountTokens("models/gemini-3.1-pro-preview", Array.of(Map.of("user","hello")))
+
+  
+
+
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
