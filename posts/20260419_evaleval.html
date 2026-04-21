@@ -1,13 +1,23 @@
+<!-- EDITOR'S NOTES FROM CLAUDE
+     Changes fall into three buckets:
+     1. Typo fixes (silent unless the sentence changed meaning)
+     2. Finishing hanging sentences / fixing parses that didn't close
+     3. Part 2 rewrite (flagged extensively — revert freely, this is your post)
+
+     Unclosed <p> tags preserved throughout as your deliberate style choice.
+-->
+
 Eval Eval
 
 <h2><a href="#pt1">Part 1: Url, Router, etc</a></h2>
 <hr>
 <p>
   Did you know you don't have to close
-  html tags? that the parser is flexible enough that closing tags it
-  techincally optional? that's pretty baller IMO.
+  html tags? that the parser is flexible enough that closing tags is
+  technically optional? that's pretty baller IMO.
   Of course, tooling works better if you do close them.
   But I think it's cooler not to.
+<!-- typo: "techincally" → "technically"; also "it" → "is" so the sentence parses -->
 
 <p>
 
@@ -15,9 +25,9 @@ Eval Eval
 <p> The URL format exists because it is human readable. Most
 encodings are not, like base64. Its a compromise between machine precision and
 human readability. The no-space rule: machine readable. The a-zA-Z
-rule: human readable. Https optional: human readable. '.' delimters in
-  domian section: machine readable.
-
+rule: human readable. Https optional: human readable. '.' delimiters in
+  domain section: machine readable.
+<!-- typos: "delimters", "domian" -->
 
 <p>
   It threads the needle perfectly.
@@ -29,11 +39,16 @@ rule: human readable. Https optional: human readable. '.' delimters in
 So url's are a beautiful thing, and exist to be shareable artifacts to
   be entered into a url bar or clicked. Chromium and its derived
   browsers (including on mobile) have this shortcut, I learned
-  recently: Want to go https://<b>g</b>ithub.com/<b>t</b>ommy-mor/<b>b</b>log</pre>?
+  recently: Want to go https://<b>g</b>ithub.com/<b>t</b>ommy-mor/<b>b</b>log?
   type <b> g t b </b>. Which corresponds to the first letter of
   each segment. It will suggest the right url. Very neat.
+<!-- fixed: you had a stray </pre> after "blog" that was breaking the render -->
 
-But they are naming a resource. They are pointing a
+<p>But they are naming a resource. They are pointing at something you
+  want to share.
+<!-- your original sentence trailed off at "They are pointing a" —
+     I guessed at the completion. This is the pivot into the router
+     critique, so it should land whatever thought you were reaching for. -->
 
 <hr>
 <p>Routing in every language
@@ -49,8 +64,9 @@ But they are naming a resource. They are pointing a
 </code></pre>
 
 <p>
-Notice the names next to eachother. The route pattern (/post/:slug), and the
-funciton name symbol (post_page).
+Notice the names next to each other. The route pattern (/post/:slug), and the
+function name symbol (post_page).
+<!-- typos: "eachother", "funciton" -->
 
 <p>
   Reitit from clojure isn't much better. Deeply nested data literals that
@@ -68,7 +84,8 @@ funciton name symbol (post_page).
 
 <p>
   Python's Fastapi (while being a massive improvement over flask)
-  has @decorator bindings have the same problem. Two names.
+  has @decorator bindings with the same problem. Two names.
+<!-- grammar: original had "has ... have" which was a stray verb -->
 
 <pre><code class="language-python">from fastapi import FastAPI
 
@@ -90,22 +107,38 @@ async def post_page(slug: str):
   GET requests with clean urls also interact very well with browser history and the
   cache layer.
   Also, the nested nature of urls makes accounting for resource
-  heirarchy natural. 
+  hierarchy natural.
+<!-- typo: "heirarchy" -->
 
 <p><i>BUT</i>
 
-<p> POST requests aren't shared. They are pointed to by forms. They
-are called by api clients. Their double the verbal RAM name can be avoided.
+<p> POST requests aren't shared. They aren't in your history. They
+  aren't in your cache. Nobody has ever pasted a POST URL into Slack.
+  A POST URL exists for about 40 milliseconds between a form submit
+  and a handler dispatch, and for those 40 milliseconds you've paid
+  for it with a second name that has to stay in sync with the first
+  one forever.
+<!-- rewrite: your original "Their double the verbal RAM name can be avoided"
+     wasn't parsing, and this is the pivot sentence of the whole post.
+     I tried to hit the same idea (POST URLs are pure tax) with concrete
+     images — history, cache, Slack. Cut what you don't want. -->
 
-<b>At the very least, post should point to a name
-directly.</b> https://aistudio.google.com example which pointed to a
-java namespace and then methodname as a url.
+<p>
+<b>At the very least, POSTs should point to a name directly.</b>
+Google already does this internally — open the network tab on
+aistudio.google.com and you'll see URLs like:
 
-https://aistudio.google.com/$rpc/google.internal.alkali.applications.makersuite.v1.MakerSuiteService/CountTokens
+<pre><code>https://aistudio.google.com/$rpc/google.internal.alkali.applications.makersuite.v1.MakerSuiteService/CountTokens</code></pre>
 
-This pattern is self evident from that URL.
-
-This pattern solves the "one handler two names" problem
+<p>
+This pattern is self-evident from the URL: it's a Java namespace and
+a method name. That's it. No route DSL, no pattern matching, no second
+name to keep in sync. The smartest web infrastructure people in the
+world, when they don't need human-readable URLs, drop the pretense
+immediately and just name the function.
+<!-- reframed the aistudio bit as "evidence" rather than "example" —
+     turning it from an anecdote into a credibility anchor. Also pulled
+     the long URL into a <pre> so it doesn't wrap mid-segment. -->
 
 <hr>
 <p>
@@ -151,31 +184,82 @@ This pattern solves the "one handler two names" problem
 
 <h2><a href="#pt2"> Part 2: Auth(z) duplication </a></h2>
 <hr>
+
+<!--
+PART 2 REWRITE — this is the section you said you were getting lost in.
+I reshaped the whole thing. The original had the right shape of the
+argument (render-side check + handler-side check = duplication) but the
+beats weren't landing in order. Here's what changed:
+
+  1. Set up the example (todo app, ownership permission) cleanly.
+  2. Render side first, handler side second. One beat each.
+  3. Named the thing: "you write the same authz check twice."
+  4. Made it explicitly parallel to Part 1 — "two authz checks for
+     one permission" rhymes with "two names for one method." That
+     rhyme is the reason Part 1 and Part 2 belong in the same post.
+  5. Folded in your "scaling laws" TODO as the closing beat of the
+     section, since it's the same point (per-feature tax) at a
+     different magnification.
+  6. Added a one-sentence hook at the end pointing toward the
+     evaleval answer. You haven't written Part 3 yet; I wanted to
+     leave a handhold for it.
+
+On your "patronizing or good pedagogy?" question:
+  The "But wait! The attacker can post to any URL!" had a slight
+  infomercial energy — the exclamation and the gotcha framing. The
+  observation itself is worth making, because "UI hiding isn't a
+  security boundary" is a real thing that trips up real developers.
+  But the reader of YOUR blog probably already knows this, so I
+  stated it matter-of-factly. If your intended audience is more
+  "people who build Rails apps and don't think about the wire,"
+  dial the pedagogy back up.
+-->
+
 <p>
-  Suppose a todolist (github.com/tommy-mor/todo-tournament) app with users and multiple resource types.
-  When you list a todo, only the logged in user is allowed to delete a
-  todo. So you need to run your ACL/Authz check, and then
-  conditionally display the delete button, or maybe add a "disabled"
-  class to the dom. 
+Suppose a todo list app
+(<a href="https://github.com/tommy-mor/todo-tournament">github.com/tommy-mor/todo-tournament</a>)
+with users and multiple resource types. Only the owner of a todo is
+allowed to delete it.
 
-  <p>
-  Then you point the form to a handler somehow, and then you execute
-  the side effect (delete the TODO). But wait! The attacker can post
-  to any URL!  (claude: is this patronizing or good pedagagoy)
-
-  <p>
-  Now you have to run the ACL/Authz check again. 
-
-  (claude: im getting lost. can you please rewriet this file for me
-  and add html comments with precise feedback?)
 <p>
-  
+When you render the list, you run an authorization check: is this user
+allowed to delete this todo? If yes, render the delete button. If no,
+hide it, or slap a <code>disabled</code> class on it, or whatever your
+design system prefers.
 
+<p>
+Then the user clicks the button, which POSTs to a handler. And now you
+run the exact same authorization check again — because the URL is
+public and the handler is reachable by anyone who can type a
+<code>curl</code> command. Hiding the button in the UI is a
+convention, not a security boundary.
 
-  TODO insert point about scaling laws. per feature code, and per 
+<p>
+So for every permission-gated action in your app, you write the authz
+check twice. Once in the template, once in the handler. They can
+drift. When they drift, you have a bug — either a button that does
+nothing (annoying), or a button that shouldn't exist but the handler
+lets it through anyway (bad).
 
+<p>
+This is the Part 1 problem at a different layer.
+<b>Two authz checks for one permission.</b> And it scales with your
+app: every new permission-gated feature, you pay the tax again. The
+code you write for authorization grows with (number of features) ×
+(number of places the check has to live), when it should grow with
+just (number of features).
+<!-- folded your "TODO insert point about scaling laws" into this
+     paragraph. Your trailing "and per" suggested a second multiplier
+     (per-UI? web + mobile + API?) — I left that implicit in "number
+     of places the check has to live" so you can expand or cut. -->
 
-
+<p>
+What if the render-time check <i>was</i> the handler-time check? What
+if the thing you rendered into the form was itself the permission?
+Hold that thought.
+<!-- HOOK FOR PART 3: capability tickets. I wrote one sentence of
+     gesture so Part 2 has somewhere to point. Cut if you'd rather
+     end Part 2 on the scaling-laws beat. -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>hljs.highlightAll()</script>
