@@ -8,7 +8,35 @@ Eval Eval
   Of course, tooling works better if you do close them.
   But I think it's cooler not to.
 
+<p>
 
+<hr>
+<p> The URL format exists because it is human readable. Most
+encodings are not. Its a compromise between machine precision and
+human readability. The no-space rule: machine readable. The a-zA-Z
+rule: human readable. Https optional: human readable. '.' delimters in
+  domian section: machine readable.
+
+
+<p>
+  It threads the needle perfectly.
+
+<p>  TODO insert quote about how the designers knew this was the tradeoff
+  they were making.
+
+  <p>
+So url's are a beautiful thing, and exist to be shareable artifacts to
+  be entered into a url bar or clicked. Google chrome and its derived
+  browsers (including on mobile) have this shortcut, I learned
+  recently: Want to go https://<b>g</b>ithub.com/<b>t</b>ommy-mor/<b>b</b>log</pre>?
+  type <b> g t b </b>. Which corresponds to the first letter of
+  each segment. It will suggest the right url. Very neat.
+
+But they are naming a resource. They are pointing a way. 
+
+<details>
+<summary><span class="details-summary-text">Routing in every language
+	requires you to name things twice.</span></summary>
 <p>
   I love axum in rust, but I hate the router. A bespoke dsl for
   describing string patterns that isn't exactly regex, and compiles
@@ -49,6 +77,7 @@ async def index():
 async def post_page(slug: str):
     pass
 </code></pre>
+</details>
 
 <hr>
 <p>
