@@ -1,3 +1,8 @@
-# flyctl launch added from .gitignore
-**/__pycache__
+target/
+.git/
+data/
+.claude/
+.gitignore
+.dockerignore
 fly.toml
+**/__pycache__
