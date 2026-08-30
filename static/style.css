@@ -203,6 +203,12 @@ div.footnotes { color: #666; padding-top: 0;}
 	.epigraph {
 		padding-left: 0;
 	}
+	.content-panel pre,
+	.content-panel pre code {
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+	}
 }
 
 /* code block css */
