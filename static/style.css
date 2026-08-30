@@ -18,8 +18,8 @@ details:not([open]) summary::after {
 	content: none;
 }
 details[open] {
-	background: rgba(147, 112, 2019, 0.16);
-	margin: 0.5em;
+	background: rgba(147, 112, 219, 0.16);
+	margin: 0.5em 0;
 	padding: 0.5em;
 }
 /* rhythm magic */
@@ -29,16 +29,26 @@ body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,form,fieldset,p,blockquote,th,t
 }
 html {
 	background-color: #e6e6fa;
+	overflow-x: clip;
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
 }
 body { font-size: 87.5%;
 	font-family: "Georgia";
 	background-color: #e6e6fa;
 	margin: 0;
 	width: 100%;
+	max-width: 100%;
 	box-sizing: border-box;
 	padding-left: 1.5em;
 	padding-right: 1.5em;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
 /*  background: url("http://24ways.org/examples/compose-to-a-vertical-rhythm/underline.gif");*/
+}
+img, video, iframe {
+	max-width: 100%;
+	height: auto;
 }
 .content-panel {
 	max-width: 500px;
@@ -50,11 +60,15 @@ body { font-size: 87.5%;
 	overflow-wrap: break-word;
 	word-wrap: break-word;
 }
-.content-panel pre {
+.content-panel pre,
+.content-panel table {
 	overflow-x: auto;
 	max-width: 100%;
 	min-width: 0;
 	-webkit-overflow-scrolling: touch;
+}
+.content-panel table {
+	display: block;
 }
 html>body { font-size: 12px;}
 p, ol,ul { font-size: 1em; margin-bottom: 1.5em; line-height: 1.5em;}
@@ -145,7 +159,51 @@ div.footnotes { color: #666; padding-top: 0;}
 
 .footertag { float: right; padding-right: 2em; }
 
-
+@media (max-width: 640px) {
+	body {
+		padding-left: 1em;
+		padding-right: 1em;
+	}
+	html>body {
+		font-size: 16px;
+	}
+	h1.fronttitle,
+	h1.title {
+		max-width: 500px;
+		width: 100%;
+		margin-left: auto;
+		margin-right: auto;
+		box-sizing: border-box;
+	}
+	h1.fronttitle a:link,
+	h1.fronttitle a:visited,
+	h1.title a:link,
+	h1.title a:visited {
+		padding-top: 1em;
+		display: inline-block;
+	}
+	ul, ol {
+		margin-left: 1.5em;
+	}
+	blockquote {
+		margin-left: 1em;
+	}
+	.sidebar {
+		float: none;
+		padding-left: 0;
+		max-width: none;
+	}
+	#banner {
+		margin-left: 0;
+	}
+	.footertag {
+		float: none;
+		padding-right: 0;
+	}
+	.epigraph {
+		padding-left: 0;
+	}
+}
 
 /* code block css */
 pre code.hljs {
