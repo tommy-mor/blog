@@ -7,11 +7,20 @@ edition = "2021"
 name = "blog"
 path = "src/main.rs"
 
+[[bin]]
+name = "migrate"
+path = "src/bin/migrate.rs"
+required-features = ["migrate"]
+
+[features]
+migrate = ["dep:rocksdb"]
+
 [dependencies]
 axum = { version = "0.7", features = ["ws"] }
 maud = { version = "0.26", features = ["axum"] }
 tokio = { version = "1", features = ["full"] }
 redb = "2"
+rocksdb = { version = "0.22", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tower-http = { version = "0.5", features = ["fs"] }
