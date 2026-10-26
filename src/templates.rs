@@ -77,31 +77,15 @@ pub fn post_with(post: &Post, content: &str, hits: u64, viewers: usize) -> Marku
     )
 }
 
-/// One swappable AI voice: model picker form (GET, bookmarkable) +
-/// the selected run's paragraphs, each in its own collapsible
-/// `<details>`. No JS, no keys, no generation — the files are baked.
-/// `selected` falls back to the first model when the query names
-/// nothing or names a voice with no file.
-pub fn runcell(slug: &str, hole: &str, models: &[String], selected: &crate::runs::Run) -> Markup {
+/// One `<details>` per baked run: model slug in the summary,
+// expanding into the run's raw HTML, unescaped.
+pub fn runcell(hole: &str, runs: &[crate::runs::Run]) -> Markup {
     html! {
         div.runcell data-hole=(hole) {
-            form method="get" action=(format!("/post/{slug}")) class="run-picker" {
-                label { "voice: " }
-                @for m in models {
-                    @let active = m == &selected.model;
-                    button type="submit" name=(format!("run_{hole}"))
-                        value=(m) class=(if active { "model-chip active" } else { "model-chip" }) {
-                        (m)
-                    }
-                }
-            }
-            details.open {
-                summary { (format!("{} says:", selected.model)) }
-                @for (i, para) in selected.paragraphs.iter().enumerate() {
-                    details.run-para open {
-                        summary { (format!("¶{}", i + 1)) }
-                        p { (para) }
-                    }
+            @for run in runs {
+                details {
+                    summary { (run.model) }
+                    div.run-body { (PreEscaped(run.html.clone())) }
                 }
             }
         }
