@@ -43,7 +43,7 @@ async fn post_page(
             // h2 the 2nd. Replace one occurrence at a time, in order, so
             // each voice lands in its own hole. Bare holes (no baked
             // runs) stay as-is — the narrative flows past them.
-            let holes = runs::holes_for(&slug, &post.content);
+            let holes = runs::holes_for(&post.run_key, &post.content);
             for hole in runs::hole_ids(&post.content).iter() {
                 let Some(models) = holes.get(hole) else {
                     continue;
@@ -55,7 +55,7 @@ async fn post_page(
                 } else {
                     models[0].clone()
                 };
-                if let Some(run) = runs::load(&slug, &hole, &model) {
+                if let Some(run) = runs::load(&post.run_key, &hole, &model) {
                     let html = templates::runcell(&slug, &hole, &models, &run).into_string();
                     content = content.replacen(crate::runs::HOLE, &html, 1);
                 }

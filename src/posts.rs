@@ -7,6 +7,7 @@ pub struct Post {
     pub content: String,
     pub date: NaiveDate,
     pub slug: String,
+    pub run_key: String,
 }
 
 pub fn load() -> Vec<Post> {
@@ -30,6 +31,7 @@ pub fn load() -> Vec<Post> {
                 title,
                 content: body.to_string(),
                 date,
+                run_key: filename.trim_end_matches(".html").to_string(),
                 slug,
             })
         })
