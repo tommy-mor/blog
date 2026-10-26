@@ -14,7 +14,6 @@ never generates, never bills, never sees a key — pure playback.
 
 import json
 import os
-import re
 import sys
 import urllib.request
 
@@ -28,15 +27,15 @@ API = "https://openrouter.ai/api/v1/chat/completions"
 HOLE = "<!!!AI!!!>"
 
 
-def strip_tags(s: str) -> str:
-    return re.sub(r"<[^>]*>", "", s).strip()
-
-
 def context_above(body: str, index: int) -> str:
-    """Everything above the index-th hole (1-based), tags stripped."""
+    """Everything above the index-th hole (1-based), markup intact.
+
+    The model sees your words with their structure: headings, lists,
+    emphasis. Scrubbed by you, raw to them — your curation is the
+    filter, not a tag stripper."""
     parts = body.split(HOLE)
     assert 1 <= index <= len(parts) - 1, f"hole h{index} missing"
-    return strip_tags("\n".join(parts[:index]))
+    return "\n".join(parts[:index]).strip()
 
 
 def run_model(key: str, model: str, prompt: str) -> str:
@@ -89,8 +88,24 @@ def main() -> None:
         sys.exit(f"{slug}: no <!!!AI!!!> holes")
     want = [int(sys.argv[2])] if len(sys.argv) == 3 else list(range(1, n + 1))
     key = os.environ.get("OPENROUTER_KEY", "")
+    # Fall back to the house .env: the key lives with the family,
+    # not in the shell. Pass OPENROUTER_KEY directly to override.
     if not key:
-        sys.exit("set OPENROUTER_KEY")
+        env_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), ".env"
+        )
+        if os.path.exists(env_path):
+            with open(env_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    k, _, v = line.partition("=")
+                    if k.strip() == "OPENROUTER_KEY":
+                        key = v.strip().strip("\"'")
+                        break
+    if not key:
+        sys.exit("set OPENROUTER_KEY or add it to .env")
     if not MODELS:
         sys.exit("fill MODELS in gen_runs.py first")
     for i in want:
