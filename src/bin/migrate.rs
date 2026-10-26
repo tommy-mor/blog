@@ -98,7 +98,9 @@ fn write_redb(path: &Path, counts: &HashMap<String, u64>, sum: bool) -> Result<(
         }
     }
     let db = Database::create(path).map_err(|e| format!("open redb {}: {e}", path.display()))?;
-    let txn = db.begin_write().map_err(|e| format!("begin redb write: {e}"))?;
+    let txn = db
+        .begin_write()
+        .map_err(|e| format!("begin redb write: {e}"))?;
     {
         let mut table = txn
             .open_table(HITS)
@@ -144,8 +146,7 @@ fn is_rocksdb_file(name: &str) -> bool {
 fn cleanup_rocksdb(dir: &Path) -> Result<(), String> {
     let mut removed = 0;
     let mut kept = Vec::new();
-    let entries =
-        std::fs::read_dir(dir).map_err(|e| format!("list {}: {e}", dir.display()))?;
+    let entries = std::fs::read_dir(dir).map_err(|e| format!("list {}: {e}", dir.display()))?;
     for entry in entries {
         let entry = entry.map_err(|e| format!("list {}: {e}", dir.display()))?;
         let name = entry.file_name().to_string_lossy().into_owned();
@@ -227,8 +228,7 @@ mod tests {
 
     #[test]
     fn parses_hits_entries() {
-        let (slug, n) =
-            parse_entry(b"hits:my-post", &42u64.to_le_bytes()).expect("should parse");
+        let (slug, n) = parse_entry(b"hits:my-post", &42u64.to_le_bytes()).expect("should parse");
         assert_eq!(slug, "my-post");
         assert_eq!(n, 42);
     }

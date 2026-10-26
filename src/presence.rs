@@ -58,15 +58,30 @@ impl Rooms {
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum ClientMsg {
-    Cursor { block: u32, offset: u32, dx: f32, dy: f32 },
+    Cursor {
+        block: u32,
+        offset: u32,
+        dx: f32,
+        dy: f32,
+    },
 }
 
 #[derive(Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum ServerMsg {
-    Cursor { id: Uuid, block: u32, offset: u32, dx: f32, dy: f32 },
-    Leave { id: Uuid },
-    Count { n: usize },
+    Cursor {
+        id: Uuid,
+        block: u32,
+        offset: u32,
+        dx: f32,
+        dy: f32,
+    },
+    Leave {
+        id: Uuid,
+    },
+    Count {
+        n: usize,
+    },
 }
 
 pub async fn handle(socket: WebSocket, slug: String, state: SharedState) {
@@ -95,9 +110,21 @@ pub async fn handle(socket: WebSocket, slug: String, state: SharedState) {
     let slug2 = slug.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = stream.next().await {
-            if let Ok(ClientMsg::Cursor { block, offset, dx, dy }) = serde_json::from_str(&text) {
-                let out = serde_json::to_string(&ServerMsg::Cursor { id, block, offset, dx, dy })
-                    .unwrap();
+            if let Ok(ClientMsg::Cursor {
+                block,
+                offset,
+                dx,
+                dy,
+            }) = serde_json::from_str(&text)
+            {
+                let out = serde_json::to_string(&ServerMsg::Cursor {
+                    id,
+                    block,
+                    offset,
+                    dx,
+                    dy,
+                })
+                .unwrap();
                 rooms.broadcast_except(&slug2, id, &out);
             }
         }

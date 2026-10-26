@@ -26,7 +26,12 @@ pub fn load() -> Vec<Post> {
             let date_str = filename.split('_').next()?;
             let date = NaiveDate::parse_from_str(date_str, "%Y%m%d").ok()?;
             let slug = slugify(&title);
-            Some(Post { title, content: body.to_string(), date, slug })
+            Some(Post {
+                title,
+                content: body.to_string(),
+                date,
+                slug,
+            })
         })
         .collect();
 

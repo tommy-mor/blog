@@ -319,3 +319,34 @@ code.hljs {
 .hljs-tag {
   color: #9488b0
 }
+
+/* jukebox: swappable AI voices */
+.runcell {
+  border-left: 3px solid #d2d6bc;
+  padding-left: 1em;
+  margin: 1.5em 0;
+}
+.run-picker {
+  margin-bottom: 0.5em;
+}
+.model-chip {
+  display: inline-block;
+  margin: 0 0.25em 0.25em 0;
+  padding: 0.2em 0.6em;
+  border: 1px dotted #68693f;
+  background: none;
+  color: #68693f;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+.model-chip.active {
+  background: #d2d6bc;
+  color: #555;
+}
+.run-para {
+  margin: 0.75em 0;
+}
+.run-para summary {
+  cursor: pointer;
+  color: #666;
+}
