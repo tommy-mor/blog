@@ -50,12 +50,7 @@ pub fn index(posts: &[Post]) -> Markup {
     )
 }
 
-pub fn post(post: &Post, hits: u64, viewers: usize) -> Markup {
-    post_with(post, &post.content, hits, viewers)
-}
-
 /// Post page with pre-rendered content (run cells already swapped in).
-/// `post()` is the plain path; this is the jukebox path.
 pub fn post_with(post: &Post, content: &str, hits: u64, viewers: usize) -> Markup {
     base(
         &post.title,
@@ -89,5 +84,33 @@ pub fn runcell(hole: &str, runs: &[crate::runs::Run]) -> Markup {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run(model: &str, html: &str) -> crate::runs::Run {
+        crate::runs::Run {
+            model: model.to_string(),
+            html: html.to_string(),
+        }
+    }
+
+    #[test]
+    fn one_details_per_run_raw_html() {
+        let out = runcell(
+            "h1",
+            &[run("a", "<p>A</p>"), run("b", "<em>B</em>")],
+        )
+        .into_string();
+        assert_eq!(out.matches("<details>").count(), 2);
+        assert!(out.contains("<summary>a</summary>"));
+        assert!(out.contains("<summary>b</summary>"));
+        // Raw, not escaped.
+        assert!(out.contains("<p>A</p>"));
+        assert!(!out.contains("&lt;p&gt;"));
+        assert!(out.contains("data-hole=\"h1\""));
     }
 }

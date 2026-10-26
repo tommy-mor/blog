@@ -1,6 +1,6 @@
 //! Pre-baked model runs: each AI voice lives in its own file, rendered raw.
 //! Holes are positional: the 1st `<!!!AI!!!>` is `h1`, etc.
-//! Runs live at `posts/runs/<filestem>/h<i>/<model>.md` and render as one
+//! Runs live at `posts/runs/<filestem>/h<i>/<model>.html` and render as one
 //! `<details>` per model, unescaped.
 
 use std::fs;
@@ -38,13 +38,13 @@ pub fn models_for(slug: &str, hole: &str) -> Vec<String> {
     let mut names: Vec<String> = entries
         .flatten()
         .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.ends_with(".md"))
-        .map(|n| n.trim_end_matches(".md").to_string())
+        .filter(|n| n.ends_with(".html"))
+        .map(|n| n.trim_end_matches(".html").to_string())
         .collect();
     names.sort();
     names.dedup();
     for n in names {
-        let p = runs_dir(slug, hole).join(format!("{n}.md"));
+        let p = runs_dir(slug, hole).join(format!("{n}.html"));
         if p.is_file() {
             out.push(n);
         }
@@ -54,7 +54,7 @@ pub fn models_for(slug: &str, hole: &str) -> Vec<String> {
 
 /// Load one run: raw file content, unescaped at render.
 pub fn load(slug: &str, hole: &str, model: &str) -> Option<Run> {
-    let text = fs::read_to_string(runs_dir(slug, hole).join(format!("{model}.md"))).ok()?;
+    let text = fs::read_to_string(runs_dir(slug, hole).join(format!("{model}.html"))).ok()?;
     let html = text.trim().to_string();
     if html.is_empty() {
         return None;
@@ -82,5 +82,40 @@ mod tests {
         let body = "<p>one</p><!!!AI!!!><p>two</p><!!!AI!!!><p>three</p>";
         assert_eq!(hole_count(body), 2);
         assert_eq!(hole_ids(body), vec!["h1", "h2"]);
+    }
+
+    #[test]
+    fn holes_replace_in_order() {
+        // Same replacen loop as post_page: h1 lands in the 1st hole, h2 in the 2nd.
+        let mut content = String::from("a<!!!AI!!!>b<!!!AI!!!>c");
+        for val in ["<1>", "<2>"] {
+            content = content.replacen(HOLE, val, 1);
+        }
+        assert_eq!(content, "a<1>b<2>c");
+    }
+
+    #[test]
+    fn loads_reads_html_files_in_order() {
+        let dir = PathBuf::from("posts/runs/__test_hole__/h1");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("b.html"), "<p>B</p>").unwrap();
+        fs::write(dir.join("a.html"), "<p>A</p>").unwrap();
+        fs::write(dir.join("ignore.txt"), "nope").unwrap();
+        let got = loads("__test_hole__", "h1");
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].model, "a");
+        assert_eq!(got[0].html, "<p>A</p>");
+        assert_eq!(got[1].model, "b");
+        fs::remove_dir_all("posts/runs/__test_hole__").unwrap();
+    }
+
+    #[test]
+    fn load_rejects_missing_and_empty() {
+        assert!(load("__no_such_post__", "h1", "x").is_none());
+        let dir = PathBuf::from("posts/runs/__test_empty__/h1");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("e.html"), "  \n ").unwrap();
+        assert!(load("__test_empty__", "h1", "e").is_none());
+        fs::remove_dir_all("posts/runs/__test_empty__").unwrap();
     }
 }
