@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Bake model runs: ./gen_runs.py post.html [--hole N | --all] [--model M] [--override]
+"""Bake model runs: ./gen_runs.py post.html [--hole N | --all] [--override]
 
 Each run lives at posts/runs/<slug>/h<i>/<md5>__<model>.html, where <md5>
 is the hash of the prompt (everything above the marker, markers stripped).
 
 The model is controlled by the file: a !!!openai/gpt-6-luna!!! block names
-both the hole and the model to bake. Legacy <!!!AI!!!> blocks still work
-but need --model. Re-running with unchanged input is a cache hit (skipped);
-changed input bakes fresh and prunes the stale file for that model.
+both the hole and the model to bake. Re-running with unchanged input is a
+cache hit (skipped); changed input bakes fresh and prunes the stale file
+for that model.
 """
 import argparse
 import hashlib
@@ -45,17 +45,19 @@ def run(k: str, model: str, prompt: str) -> str:
 
 
 def holes(post: str):
-    """Yield (marker_no, model_or_None, context) per !!!...!!! block, in order.
+    """Yield (marker_no, model, context) per !!!model!!! block, in order.
 
-    A block holding exactly 'AI' is a legacy hole (model must come from
-    --model); anything else names its model. Context is the text above the
+    The block names its model (e.g. !!!openai/gpt-6-luna!!!), which must
+    look like an openrouter id (org/name). Context is the text above the
     block with all marker blocks stripped out.
     """
     out = []
     for n, m in enumerate(MARKER.finditer(post), start=1):
-        inner = m.group(1).strip()
+        model = m.group(1).strip()
+        if "/" not in model:
+            sys.exit(f"h{n}: !!!{model}!!! doesn't look like an openrouter model (want org/name)")
         ctx = MARKER.sub("", post[:m.start()]).strip()
-        out.append((n, None if inner == "AI" else inner, ctx))
+        out.append((n, model, ctx))
     return out
 
 
@@ -95,9 +97,8 @@ def bake_one(slug, hole_no, model, ctx, outdir, override, k):
 def main() -> None:
     ap = argparse.ArgumentParser(description="Bake AI runs for a blog post; model comes from !!!model!!! blocks in the file.")
     ap.add_argument("post", help="post .html file")
-    ap.add_argument("--hole", type=int, default=1, help="which !!!...!!! block to bake (1-based)")
-    ap.add_argument("--all", action="store_true", help="bake every !!!...!!! block in the file")
-    ap.add_argument("--model", help="model for legacy <!!!AI!!!> blocks (ignored otherwise)")
+    ap.add_argument("--hole", type=int, default=1, help="which !!!model!!! block to bake (1-based)")
+    ap.add_argument("--all", action="store_true", help="bake every !!!model!!! block in the file")
     ap.add_argument("--override", action="store_true", help="rebake even on cache hit")
     args = ap.parse_args()
 
@@ -108,7 +109,7 @@ def main() -> None:
     slug = Path(args.post).stem
     found = holes(post)
     if not found:
-        sys.exit(f"{slug}: no !!!...!!! blocks")
+        sys.exit(f"{slug}: no !!!model!!! blocks")
     if args.all:
         selected = found
     else:
@@ -118,12 +119,6 @@ def main() -> None:
 
     k = key()
     for n, model, ctx in selected:
-        if model is None:
-            if not args.model:
-                sys.exit(f"h{n}: legacy <!!!AI!!!> block needs --model (or switch it to !!!model!!!)")
-            model = args.model
-        elif args.model:
-            sys.exit(f"h{n}: model comes from the file ({model}); --model is only for legacy <!!!AI!!!>")
         outdir = Path("posts/runs") / slug / f"h{n}"
         outdir.mkdir(parents=True, exist_ok=True)
         bake_one(slug, n, model, ctx, outdir, args.override, k)

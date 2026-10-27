@@ -7,9 +7,8 @@
 use std::fs;
 use std::path::PathBuf;
 
-/// The hole marker: legacy `<!!!AI!!!>`, or new-style `!!!model!!!`
-/// where the block names its model (e.g. `!!!openai/gpt-6-luna!!!`).
-/// New-style is any `!!!...!!!` run NOT immediately wrapped in `<`/`>`.
+/// The hole marker: a `!!!model!!!` block names its model
+/// (e.g. `!!!openai/gpt-6-luna!!!`). Every `!!!...!!!` run is a hole.
 pub fn marker_spans(content: &str) -> Vec<(usize, usize)> {
     let b = content.as_bytes();
     let mut spans = Vec::new();
@@ -17,21 +16,14 @@ pub fn marker_spans(content: &str) -> Vec<(usize, usize)> {
     while i + 7 <= b.len() {
         if &b[i..i + 3] == b"!!!" {
             if let Some(rel) = find_marker_end(&b[i + 3..]) {
-                let inner_end = i + 3 + rel;
-                let j = inner_end + 3;
-                if inner_end == i + 3 {
+                if rel == 0 {
                     // Empty `!!!!!!`: not a marker.
                     i += 1;
                     continue;
                 }
-                let wrapped = i > 0 && b[i - 1] == b'<' && j < b.len() && b[j] == b'>';
-                if wrapped {
-                    spans.push((i - 1, j + 1));
-                    i = j + 1;
-                } else {
-                    spans.push((i, j));
-                    i = j;
-                }
+                let j = i + 3 + rel + 3;
+                spans.push((i, j));
+                i = j;
                 continue;
             }
         }
@@ -156,15 +148,17 @@ mod tests {
 
     #[test]
     fn holes_are_positional() {
-        let body = "<p>one</p><!!!AI!!!><p>two</p>!!!org/m!!!<p>three</p>!!!x/y!!!";
+        let body = "<p>one</p>!!!a/m!!!<p>two</p>!!!org/m!!!<p>three</p>!!!x/y!!!";
         assert_eq!(hole_count(body), 3);
         assert_eq!(hole_ids(body), vec!["h1", "h2", "h3"]);
     }
 
     #[test]
-    fn marker_spans_find_both_syntaxes() {
-        let body = "a<!!!AI!!!>b!!!org/m!!!c";
-        assert_eq!(marker_spans(body), vec![(1, 11), (12, 23)]);
+    fn marker_spans_find_model_blocks() {
+        let body = "a!!!m/n!!!b!!!org/m!!!c";
+        assert_eq!(marker_spans(body), vec![(1, 10), (11, 22)]);
+        // Angle brackets are plain text now: only the inner run counts.
+        assert_eq!(marker_spans("a<!!!AI!!!>b"), vec![(2, 10)]);
         // Empty !!!!!! is not a marker; unterminated !!! isn't either.
         assert!(marker_spans("a!!!!!!b").is_empty());
         assert!(marker_spans("a!!!oops b").is_empty());
@@ -173,7 +167,7 @@ mod tests {
     #[test]
     fn holes_replace_in_order() {
         // Same splice loop as post_page: h1 lands in the 1st hole, h2 in the 2nd.
-        let content = String::from("a<!!!AI!!!>b!!!org/m!!!c");
+        let content = String::from("a!!!m/n!!!b!!!org/m!!!c");
         let spans = marker_spans(&content);
         let mut out = String::new();
         let mut last = 0;
