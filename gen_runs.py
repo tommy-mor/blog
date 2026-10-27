@@ -43,7 +43,7 @@ def main() -> None:
         sys.exit(f"h{i}: empty context")
     outdir = Path("posts/runs") / slug / f"h{i}"
     outdir.mkdir(parents=True, exist_ok=True)
-    path = outdir / f"{model.replace('/', '-')}.html"
+    path = outdir / f"{model.replace('/', '__')}.html"
     if path.exists():
         sys.exit(f"h{i}/{model}: exists, refusing to overwrite")
     print(f"h{i}/{model}: baking ({len(ctx)} chars) ...", flush=True)

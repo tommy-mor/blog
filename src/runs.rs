@@ -19,6 +19,14 @@ fn runs_dir(slug: &str, hole: &str) -> PathBuf {
     PathBuf::from("posts").join("runs").join(slug).join(hole)
 }
 
+/// On disk `/` becomes `__` (safe in paths); in the DOM show the full key.
+pub fn encode(model: &str) -> String {
+    model.replace('/', "__")
+}
+pub fn decode(stem: &str) -> String {
+    stem.replace("__", "/")
+}
+
 /// Count the holes in a post body, in order.
 pub fn hole_count(content: &str) -> usize {
     content.matches(HOLE).count()
@@ -30,6 +38,7 @@ pub fn hole_ids(content: &str) -> Vec<String> {
 }
 
 /// Models with a baked file for this hole, in filename order.
+/// Returns full openrouter ids (`__` decoded to `/`).
 pub fn models_for(slug: &str, hole: &str) -> Vec<String> {
     let mut out = Vec::new();
     let Ok(entries) = fs::read_dir(runs_dir(slug, hole)) else {
@@ -46,15 +55,16 @@ pub fn models_for(slug: &str, hole: &str) -> Vec<String> {
     for n in names {
         let p = runs_dir(slug, hole).join(format!("{n}.html"));
         if p.is_file() {
-            out.push(n);
+            out.push(decode(&n));
         }
     }
     out
 }
 
 /// Load one run: raw file content, unescaped at render.
+/// `model` is the full openrouter id (`org/model`); the file uses `__`.
 pub fn load(slug: &str, hole: &str, model: &str) -> Option<Run> {
-    let text = fs::read_to_string(runs_dir(slug, hole).join(format!("{model}.html"))).ok()?;
+    let text = fs::read_to_string(runs_dir(slug, hole).join(format!("{}.html", encode(model)))).ok()?;
     let html = text.trim().to_string();
     if html.is_empty() {
         return None;
@@ -107,6 +117,19 @@ mod tests {
         assert_eq!(got[0].html, "<p>A</p>");
         assert_eq!(got[1].model, "b");
         fs::remove_dir_all("posts/runs/__test_hole__").unwrap();
+    }
+
+    #[test]
+    fn encode_roundtrips_slash() {
+        assert_eq!(encode("anthropic/claude-fable"), "anthropic__claude-fable");
+        assert_eq!(decode("anthropic__claude-fable"), "anthropic/claude-fable");
+        let dir = PathBuf::from("posts/runs/__test_enc__/h1");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("org__model-x.html"), "<p>hi</p>").unwrap();
+        let got = loads("__test_enc__", "h1");
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].model, "org/model-x");
+        fs::remove_dir_all("posts/runs/__test_enc__").unwrap();
     }
 
     #[test]
