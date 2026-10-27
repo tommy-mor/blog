@@ -89,13 +89,13 @@ def existing_runs(outdir: Path):
     return found
 
 
-def prune_stale(outdir, model_enc, digest):
-    """Drop stale files for this model: same model, different (or
-    missing) input hash. Other models' files are left alone -- a hole
-    can hold a whole comparison drawer of models."""
-    for md5, stale in existing_runs(outdir).get(model_enc, []):
-        if md5 != digest:
-            stale.unlink()
+def prune_stale(outdir, keep):
+    """One run per hole: drop every other baked file in the hole dir."""
+    if not outdir.is_dir():
+        return
+    for path in sorted(outdir.glob("*.html")):
+        if path != keep:
+            path.unlink()
 
 
 def bake_one(slug, hole_no, model, ctx, outdir, override, k):
@@ -105,17 +105,19 @@ def bake_one(slug, hole_no, model, ctx, outdir, override, k):
     prompt = f"you are {model}\n\n{ctx}"
     digest = hashlib.md5(prompt.encode()).hexdigest()
     current = existing_runs(outdir).get(model_enc, [])
-    if not override and any(md5 == digest for md5, _ in current):
+    hit = next((p for md5, p in current if md5 == digest), None)
+    if hit is not None and not override:
         print(f"h{hole_no}/{model}: cached ({digest[:12]}...), skipping")
+        keep = hit
     else:
         outdir.mkdir(parents=True, exist_ok=True)
         print(f"h{hole_no}/{model}: baking ({len(prompt)} chars) ...", flush=True)
         text = run(k, model, prompt).strip() + "\n"
-        path = outdir / f"{digest}__{model_enc}.html"
-        path.write_text(text)
-        print(f"h{hole_no}/{model}: wrote {path}")
+        keep = outdir / f"{digest}__{model_enc}.html"
+        keep.write_text(text)
+        print(f"h{hole_no}/{model}: wrote {keep}")
         print(text)
-    prune_stale(outdir, model_enc, digest)
+    prune_stale(outdir, keep)
 
 
 def main() -> None:
