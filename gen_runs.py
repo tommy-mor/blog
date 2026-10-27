@@ -26,15 +26,17 @@ def run(k: str, model: str, prompt: str) -> str:
         return json.load(r)["choices"][0]["message"]["content"]
 
 def main() -> None:
-    if len(sys.argv) not in (3, 4):
-        sys.exit(f"usage: {sys.argv[0]} <post.html> <openrouter/model> [hole-index=1]")
-    post = Path(sys.argv[1]).read_text()
-    slug = Path(sys.argv[1]).stem
-    model = sys.argv[2]
+    args = [a for a in sys.argv[1:] if a != "--override"]
+    override = len(args) != len(sys.argv[1:])
+    if len(args) not in (2, 3):
+        sys.exit(f"usage: {sys.argv[0]} <post.html> <openrouter/model> [hole-index=1] [--override]")
+    post = Path(args[0]).read_text()
+    slug = Path(args[0]).stem
+    model = args[1]
     parts = post.split(HOLE)
     if len(parts) < 2:
         sys.exit(f"{slug}: no {HOLE} holes")
-    i = int(sys.argv[3]) if len(sys.argv) == 4 else 1
+    i = int(args[2]) if len(args) == 3 else 1
     if not 1 <= i < len(parts):
         sys.exit(f"hole h{i} missing (found {len(parts) - 1})")
     k = key()
@@ -44,8 +46,8 @@ def main() -> None:
     outdir = Path("posts/runs") / slug / f"h{i}"
     outdir.mkdir(parents=True, exist_ok=True)
     path = outdir / f"{model.replace('/', '__')}.html"
-    if path.exists():
-        sys.exit(f"h{i}/{model}: exists, refusing to overwrite")
+    if path.exists() and not override:
+        sys.exit(f"h{i}/{model}: exists, refusing to overwrite (pass --override)")
     print(f"h{i}/{model}: baking ({len(ctx)} chars) ...", flush=True)
     text = run(k, model, ctx).strip() + "\n"
     path.write_text(text)
