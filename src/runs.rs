@@ -51,21 +51,9 @@ fn runs_dir(slug: &str, hole: &str) -> PathBuf {
 }
 
 /// On disk `/` becomes `__` (safe in paths); in the DOM show the full key.
-pub fn encode(model: &str) -> String {
-    model.replace('/', "__")
-}
+/// (Encoding lives in gen_runs.py; Rust only decodes.)
 pub fn decode(stem: &str) -> String {
     stem.replace("__", "/")
-}
-
-/// Count the holes in a post body, in order.
-pub fn hole_count(content: &str) -> usize {
-    marker_spans(content).len()
-}
-
-/// Hole ids for a body: `h1..=hN` in narrative order.
-pub fn hole_ids(content: &str) -> Vec<String> {
-    (1..=hole_count(content)).map(|i| format!("h{i}")).collect()
 }
 
 /// Splice per-hole HTML into a post body, replacing marker spans.
@@ -171,8 +159,10 @@ mod tests {
     #[test]
     fn holes_are_positional() {
         let body = "<p>one</p>!!!a/m!!!<p>two</p>!!!org/m!!!<p>three</p>!!!x/y!!!";
-        assert_eq!(hole_count(body), 3);
-        assert_eq!(hole_ids(body), vec!["h1", "h2", "h3"]);
+        let spans = marker_spans(body);
+        assert_eq!(spans.len(), 3);
+        // hole hN covers the Nth marker in narrative order
+        assert!(spans[0].1 <= spans[1].0 && spans[1].1 <= spans[2].0);
     }
 
     #[test]
@@ -221,8 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn encode_roundtrips_slash() {
-        assert_eq!(encode("anthropic/claude-fable"), "anthropic__claude-fable");
+    fn decode_handles_slashes() {
         assert_eq!(decode("anthropic__claude-fable"), "anthropic/claude-fable");
         let dir = PathBuf::from("posts/runs/__test_enc__/h1");
         fs::create_dir_all(&dir).unwrap();

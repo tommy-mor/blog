@@ -107,6 +107,7 @@ def bake_one(slug, hole_no, model, ctx, outdir, override, k):
     if not override and any(md5 == digest for md5, _ in current):
         print(f"h{hole_no}/{model}: cached ({digest[:12]}...), skipping")
     else:
+        outdir.mkdir(parents=True, exist_ok=True)
         print(f"h{hole_no}/{model}: baking ({len(ctx)} chars) ...", flush=True)
         text = run(k, model, ctx).strip() + "\n"
         path = outdir / f"{digest}__{model_enc}.html"
@@ -119,12 +120,12 @@ def bake_one(slug, hole_no, model, ctx, outdir, override, k):
 def main() -> None:
     ap = argparse.ArgumentParser(description="Bake AI runs for a blog post; model comes from !!!model!!! blocks in the file.")
     ap.add_argument("post", help="post .html file")
-    ap.add_argument("--hole", type=int, default=1, help="which !!!model!!! block to bake (1-based)")
-    ap.add_argument("--all", action="store_true", help="bake every !!!model!!! block in the file")
+    ap.add_argument("--hole", type=int, default=None, help="bake only this !!!model!!! block (1-based); default bakes every block")
+    ap.add_argument("--all", action="store_true", help="bake every !!!model!!! block in the file (the default)")
     ap.add_argument("--override", action="store_true", help="rebake even on cache hit")
     args = ap.parse_args()
 
-    if args.all and args.hole != 1:
+    if args.hole is not None and args.all:
         ap.error("--hole and --all are mutually exclusive")
 
     post = Path(args.post).read_text()
@@ -132,18 +133,17 @@ def main() -> None:
     found = holes(post)
     if not found:
         sys.exit(f"{slug}: no !!!model!!! blocks")
-    if args.all:
-        selected = found
-    else:
+    if args.hole is not None:
         if not 1 <= args.hole <= len(found):
             sys.exit(f"hole h{args.hole} missing (found {len(found)})")
         selected = [found[args.hole - 1]]
+    else:
+        selected = found
 
     k = key()
     for n, model, start in selected:
         ctx = build_ctx(post, start, slug, n)
         outdir = Path("posts/runs") / slug / f"h{n}"
-        outdir.mkdir(parents=True, exist_ok=True)
         bake_one(slug, n, model, ctx, outdir, args.override, k)
 
 
