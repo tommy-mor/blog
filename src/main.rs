@@ -31,14 +31,25 @@ async fn post_page(Path(slug): Path<String>, State(state): State<SharedState>) -
             let hits = counter::get_hits(&state.db, &slug);
             let viewers = state.rooms.viewer_count(&slug);
             // Each hole renders every baked run, one <details> per model.
+            // Marker spans are spliced in one pass (holes share offsets).
+            let spans = runs::marker_spans(&post.content);
             let mut content = post.content.clone();
-            for hole in runs::hole_ids(&post.content) {
-                let baked = runs::loads(&post.run_key, &hole);
-                if baked.is_empty() {
-                    continue;
+            if !spans.is_empty() {
+                let mut out = String::with_capacity(content.len());
+                let mut last = 0;
+                for (idx, &(s, e)) in spans.iter().enumerate() {
+                    let hole = format!("h{}", idx + 1);
+                    let baked = runs::loads(&post.run_key, &hole);
+                    out.push_str(&content[last..s]);
+                    if baked.is_empty() {
+                        out.push_str(&content[s..e]);
+                    } else {
+                        out.push_str(&templates::runcell(&hole, &baked).into_string());
+                    }
+                    last = e;
                 }
-                let html = templates::runcell(&hole, &baked).into_string();
-                content = content.replacen(crate::runs::HOLE, &html, 1);
+                out.push_str(&content[last..]);
+                content = out;
             }
             templates::post_with(&post, &content, hits, viewers).into_response()
         }
