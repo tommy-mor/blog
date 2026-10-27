@@ -2,12 +2,11 @@
 """Bake model runs: ./gen_runs.py post.html [--hole N | --all] [--override]
 
 Each run lives at posts/runs/<slug>/h<i>/<md5>__<model>.html, where <md5>
-is the hash of the prompt (everything above the marker, markers stripped).
-
-The model is controlled by the file: a !!!openai/gpt-6-luna!!! block names
-both the hole and the model to bake. Re-running with unchanged input is a
-cache hit (skipped); changed input bakes fresh and prunes the stale file
-for that model.
+is the hash of the prompt. The prompt is everything above the marker --
+narrative plus all baked AI outputs above it, so every model sees what
+the earlier models said. Re-running with unchanged input is a cache hit
+(skipped); changed input bakes fresh and prunes only that model's stale
+file. A hole can hold a comparison drawer of several models.
 """
 import argparse
 import hashlib
@@ -45,20 +44,36 @@ def run(k: str, model: str, prompt: str) -> str:
 
 
 def holes(post: str):
-    """Yield (marker_no, model, context) per !!!model!!! block, in order.
+    """Yield (marker_no, model, marker_start) per !!!model!!! block.
 
     The block names its model (e.g. !!!openai/gpt-6-luna!!!), which must
-    look like an openrouter id (org/name). Context is the text above the
-    block with all marker blocks stripped out.
+    look like an openrouter id (org/name).
     """
     out = []
     for n, m in enumerate(MARKER.finditer(post), start=1):
         model = m.group(1).strip()
         if "/" not in model:
             sys.exit(f"h{n}: !!!{model}!!! doesn't look like an openrouter model (want org/name)")
-        ctx = MARKER.sub("", post[:m.start()]).strip()
-        out.append((n, model, ctx))
+        out.append((n, model, m.start()))
     return out
+
+
+def build_ctx(post: str, start: int, slug: str, hole_no: int) -> str:
+    """Prompt for a hole: narrative above the marker plus every baked
+    AI output above it, so each model sees what the earlier ones said."""
+    ctx = MARKER.sub("", post[:start]).strip()
+    chunks = [ctx] if ctx else []
+    for i in range(1, hole_no):
+        idir = Path("posts/runs") / slug / f"h{i}"
+        if not idir.is_dir():
+            continue
+        for path in sorted(idir.glob("*.html")):
+            m = HASHED.match(path.stem)
+            model = (m.group(2) if m else path.stem).replace("__", "/")
+            text = path.read_text().strip()
+            if text:
+                chunks.append(f"--- baked h{i} ({model}) ---\n{text}")
+    return "\n\n".join(chunks).strip()
 
 
 def existing_runs(outdir: Path):
@@ -75,12 +90,12 @@ def existing_runs(outdir: Path):
 
 
 def prune_stale(outdir, model_enc, digest):
-    """Enforce one model per hole: drop everything in the hole dir except
-    the current model's current-md5 file."""
-    for other_enc, files in existing_runs(outdir).items():
-        for md5, stale in files:
-            if other_enc != model_enc or md5 != digest:
-                stale.unlink()
+    """Drop stale files for this model: same model, different (or
+    missing) input hash. Other models' files are left alone -- a hole
+    can hold a whole comparison drawer of models."""
+    for md5, stale in existing_runs(outdir).get(model_enc, []):
+        if md5 != digest:
+            stale.unlink()
 
 
 def bake_one(slug, hole_no, model, ctx, outdir, override, k):
@@ -125,7 +140,8 @@ def main() -> None:
         selected = [found[args.hole - 1]]
 
     k = key()
-    for n, model, ctx in selected:
+    for n, model, start in selected:
+        ctx = build_ctx(post, start, slug, n)
         outdir = Path("posts/runs") / slug / f"h{n}"
         outdir.mkdir(parents=True, exist_ok=True)
         bake_one(slug, n, model, ctx, outdir, args.override, k)

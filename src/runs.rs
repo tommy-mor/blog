@@ -258,6 +258,21 @@ mod tests {
     }
 
     #[test]
+    fn loads_all_models_in_a_hole() {
+        // A comparison drawer: every baked model renders, not just the first.
+        let dir = PathBuf::from("posts/runs/__test_multi__/h1");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa__org__a.html"), "<p>A</p>").unwrap();
+        fs::write(dir.join("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb__org__b.html"), "<p>B</p>").unwrap();
+        let got = loads("__test_multi__", "h1");
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].model, "org/a");
+        assert_eq!(got[1].model, "org/b");
+        assert!(load("__test_multi__", "h1", "org/b").is_some());
+        fs::remove_dir_all("posts/runs/__test_multi__").unwrap();
+    }
+
+    #[test]
     fn load_rejects_missing_and_empty() {
         assert!(load("__no_such_post__", "h1", "x").is_none());
         let dir = PathBuf::from("posts/runs/__test_empty__/h1");
