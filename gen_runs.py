@@ -74,6 +74,15 @@ def existing_runs(outdir: Path):
     return found
 
 
+def prune_stale(outdir, model_enc, digest):
+    """Enforce one model per hole: drop everything in the hole dir except
+    the current model's current-md5 file."""
+    for other_enc, files in existing_runs(outdir).items():
+        for md5, stale in files:
+            if other_enc != model_enc or md5 != digest:
+                stale.unlink()
+
+
 def bake_one(slug, hole_no, model, ctx, outdir, override, k):
     model_enc = model.replace("/", "__")
     digest = hashlib.md5(ctx.encode()).hexdigest()
@@ -82,16 +91,14 @@ def bake_one(slug, hole_no, model, ctx, outdir, override, k):
     current = existing_runs(outdir).get(model_enc, [])
     if not override and any(md5 == digest for md5, _ in current):
         print(f"h{hole_no}/{model}: cached ({digest[:12]}...), skipping")
-        return
-    print(f"h{hole_no}/{model}: baking ({len(ctx)} chars) ...", flush=True)
-    text = run(k, model, ctx).strip() + "\n"
-    path = outdir / f"{digest}__{model_enc}.html"
-    path.write_text(text)
-    for _, stale in current:
-        if stale != path:
-            stale.unlink()
-    print(f"h{hole_no}/{model}: wrote {path}")
-    print(text)
+    else:
+        print(f"h{hole_no}/{model}: baking ({len(ctx)} chars) ...", flush=True)
+        text = run(k, model, ctx).strip() + "\n"
+        path = outdir / f"{digest}__{model_enc}.html"
+        path.write_text(text)
+        print(f"h{hole_no}/{model}: wrote {path}")
+        print(text)
+    prune_stale(outdir, model_enc, digest)
 
 
 def main() -> None:

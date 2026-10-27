@@ -68,6 +68,28 @@ pub fn hole_ids(content: &str) -> Vec<String> {
     (1..=hole_count(content)).map(|i| format!("h{i}")).collect()
 }
 
+/// Splice per-hole HTML into a post body, replacing marker spans.
+/// `renders[i]` is the HTML for hole `h{i+1}`, or empty when that hole
+/// has no baked runs (the marker is scrubbed either way -- raw `!!!`
+/// text must never reach the DOM).
+pub fn splice(content: &str, renders: &[String]) -> String {
+    let spans = marker_spans(content);
+    if spans.is_empty() {
+        return content.to_string();
+    }
+    let mut out = String::with_capacity(content.len());
+    let mut last = 0;
+    for (idx, &(s, e)) in spans.iter().enumerate() {
+        out.push_str(&content[last..s]);
+        if let Some(html) = renders.get(idx) {
+            out.push_str(html);
+        }
+        last = e;
+    }
+    out.push_str(&content[last..]);
+    out
+}
+
 /// Strip a leading `<md5>__` content-hash prefix from a baked run stem.
 /// Pre-hash `model` stems pass through unchanged.
 pub fn strip_hash(stem: &str) -> &str {
@@ -166,18 +188,21 @@ mod tests {
 
     #[test]
     fn holes_replace_in_order() {
-        // Same splice loop as post_page: h1 lands in the 1st hole, h2 in the 2nd.
+        // Same splice as post_page: h1 lands in the 1st hole, h2 in the 2nd.
         let content = String::from("a!!!m/n!!!b!!!org/m!!!c");
-        let spans = marker_spans(&content);
-        let mut out = String::new();
-        let mut last = 0;
-        for (val, &(s, e)) in ["<1>", "<2>"].iter().zip(spans.iter()) {
-            out.push_str(&content[last..s]);
-            out.push_str(val);
-            last = e;
-        }
-        out.push_str(&content[last..]);
-        assert_eq!(out, "a<1>b<2>c");
+        assert_eq!(
+            splice(&content, &["<1>".to_string(), "<2>".to_string()]),
+            "a<1>b<2>c"
+        );
+    }
+
+    #[test]
+    fn splice_scrubs_unbaked_holes() {
+        // No runs -> no raw !!! text may survive into the DOM.
+        let content = String::from("a!!!m/n!!!b!!!org/m!!!c");
+        let out = splice(&content, &[String::new(), "<2>".to_string()]);
+        assert_eq!(out, "ab<2>c");
+        assert!(!out.contains("!!!"));
     }
 
     #[test]
