@@ -47,8 +47,10 @@ def main() -> None:
     if path.exists():
         sys.exit(f"h{i}/{model}: exists, refusing to overwrite")
     print(f"h{i}/{model}: baking ({len(ctx)} chars) ...", flush=True)
-    path.write_text(run(k, model, ctx).strip() + "\n")
+    text = run(k, model, ctx).strip() + "\n"
+    path.write_text(text)
     print(f"h{i}/{model}: wrote {path}")
+    print(text)
 
 if __name__ == "__main__":
     main()
