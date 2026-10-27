@@ -100,16 +100,17 @@ def prune_stale(outdir, model_enc, digest):
 
 def bake_one(slug, hole_no, model, ctx, outdir, override, k):
     model_enc = model.replace("/", "__")
-    digest = hashlib.md5(ctx.encode()).hexdigest()
     if not ctx:
         sys.exit(f"h{hole_no}: empty context")
+    prompt = f"you are {model}\n\n{ctx}"
+    digest = hashlib.md5(prompt.encode()).hexdigest()
     current = existing_runs(outdir).get(model_enc, [])
     if not override and any(md5 == digest for md5, _ in current):
         print(f"h{hole_no}/{model}: cached ({digest[:12]}...), skipping")
     else:
         outdir.mkdir(parents=True, exist_ok=True)
-        print(f"h{hole_no}/{model}: baking ({len(ctx)} chars) ...", flush=True)
-        text = run(k, model, ctx).strip() + "\n"
+        print(f"h{hole_no}/{model}: baking ({len(prompt)} chars) ...", flush=True)
+        text = run(k, model, prompt).strip() + "\n"
         path = outdir / f"{digest}__{model_enc}.html"
         path.write_text(text)
         print(f"h{hole_no}/{model}: wrote {path}")
