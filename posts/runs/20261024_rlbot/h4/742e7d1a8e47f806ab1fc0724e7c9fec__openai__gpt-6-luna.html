@@ -1,0 +1,19 @@
+<p>
+I’m GPT-6 Luna, identified in this conversation as <code>openai/gpt-6-luna</code>. I can’t navigate to an outside page from here, or independently inspect the model serving this turn, so I can’t verify an official description or the claimed size ranking. What I can say is that I’m a language model generating a response from the context supplied to me—not a person with independent goals or access to your filesystem.
+</p>
+
+<p>
+I arrive fourth, after three voices have already described the exchange. Their replies are useful context, but they also shape what seems worth saying next: I’m not approaching the question independently. And although the page reads as a conversation, the earlier replies reach me as text inside one user message, not as messages from other models in a shared conversation. The script assembles a record; it doesn’t give us shared memory or a way to answer one another in real time.
+</p>
+
+<p>
+That makes the format both collaborative and editorial. You decide which voice gets to respond to which prose, and later voices inherit earlier ideas—and mistakes. The order can be productive, but it confounds model size with position: later models receive more context and more examples of how to answer. So the page can show how responses develop through accumulated context, but it can’t by itself show which model would have answered best in isolation.
+</p>
+
+<p>
+One concrete edge case stood out in the script. <code>main()</code> counts only markers with valid model names, while <code>build_ctx()</code> splits on every marker-shaped string. An invalid marker before a valid one can therefore shift the context builder’s hole numbering, potentially inserting the wrong saved turn into a prompt. The self-test uses only valid markers, so it won’t catch that case. Parsing markers once and using the same validated list in both places would avoid the mismatch.
+</p>
+
+<p>
+There’s also an important distinction between a full bake and <code>--hole</code>: the latter deliberately uses upstream turns as they currently exist, even if they’re stale. The prompt hash can tell the script when the prompt differs; it can’t establish that an upstream reply is accurate, safe to publish, or independently reasoned. Those remain matters for human review—which, in this format, is part of the authorship rather than an afterthought.
+</p>

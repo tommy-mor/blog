@@ -51,6 +51,12 @@ async fn post_page(Path(slug): Path<String>, State(state): State<SharedState>) -
                     .collect();
                 content = runs::splice(&post.content, &renders);
             }
+            // Read markers second: files on disk may contain `!!!org/model!!!`
+            // text of their own, and it must render as code, never as a hole.
+            let (mut content, had_reads) = runs::splice_reads(&content);
+            if had_reads {
+                content.push_str(runs::HLJS_SCRIPTS);
+            }
             templates::post_with(&post, &content, hits, viewers).into_response()
         }
         None => axum::http::StatusCode::NOT_FOUND.into_response(),

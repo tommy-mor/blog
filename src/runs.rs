@@ -59,6 +59,146 @@ fn find_marker_end(after_open: &[u8]) -> Option<usize> {
 
 /// Count the holes in a post body, in order.
 
+/// highlight.js, same CDN and version the evaleval post uses. Injected
+/// once at the end of any page that spliced a code block.
+pub const HLJS_SCRIPTS: &str = concat!(
+    r#"<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>"#,
+    r#"<script>hljs.highlightAll()</script>"#,
+    r#"<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>"#,
+    r#"<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>"#,
+);
+
+/// Parse a read marker's inner text: `read:path:def a:def b` (the `read:`
+/// prefix is optional). The path must name an existing file inside the
+/// repo -- `..` is refused, so the DOM can never read outside it.
+/// Selectors (`:def name`, `:fn name`) pick individual functions.
+fn parse_read(inner: &str) -> Option<(PathBuf, Vec<String>)> {
+    let inner = inner.strip_prefix("read:").unwrap_or(inner);
+    let mut parts = inner.split(':');
+    let path = PathBuf::from(parts.next()?.trim());
+    if path.components().any(|c| matches!(c, std::path::Component::ParentDir)) || !path.is_file() {
+        return None;
+    }
+    Some((
+        path,
+        parts.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect(),
+    ))
+}
+
+/// hljs language class from a file extension.
+fn lang_of(path: &PathBuf) -> &'static str {
+    match path.extension().and_then(|e| e.to_str()) {
+        Some("py") => "python",
+        Some("rs") => "rust",
+        Some("js") => "javascript",
+        Some("html") => "xml",
+        Some("css") => "css",
+        Some("json") => "json",
+        Some("sh") => "bash",
+        Some("md") => "markdown",
+        _ => "plaintext",
+    }
+}
+
+/// Line-based function extraction: the `def name(` / `fn name(` line plus
+/// every line indented deeper, plus a closing line of pure `})]` if one
+/// stops the body. Works for python and rust alike.
+fn extract_defs(text: &str, selectors: &[String]) -> String {
+    if selectors.is_empty() {
+        return text.to_string();
+    }
+    let lines: Vec<&str> = text.lines().collect();
+    let mut out = String::new();
+    for sel in selectors {
+        let name = sel
+            .split_whitespace()
+            .last()
+            .unwrap_or(sel)
+            .trim_end_matches(|c: char| !c.is_alphanumeric() && c != '_');
+        let mut i = 0;
+        let mut found = false;
+        while i < lines.len() {
+            let t = lines[i].trim_start();
+            let head = t.split_whitespace().next().unwrap_or("");
+            if (head == "def" || head == "fn") && t[head.len()..].trim_start().starts_with(&format!("{name}(")) {
+                found = true;
+                let base = lines[i].len() - t.len();
+                out.push_str(lines[i]);
+                out.push('\n');
+                for follow in &lines[i + 1..] {
+                    let ft = follow.trim();
+                    let indent = follow.len() - follow.trim_start().len();
+                    if ft.is_empty() || indent > base {
+                        out.push_str(follow);
+                        out.push('\n');
+                    } else {
+                        if ft.chars().all(|c| matches!(c, '}' | ')' | ']')) {
+                            out.push_str(follow);
+                            out.push('\n');
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+            i += 1;
+        }
+        if !found {
+            out.push_str(&format!("[def not found: {name}]\n"));
+        }
+    }
+    out
+}
+
+/// Minimal HTML escaping for code content.
+fn escape_code(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
+/// Splice `!!!read:...!!!` markers into `<pre><code>` blocks, escaped and
+/// language-tagged for hljs. Returns (html, spliced_any) -- the caller
+/// appends HLJS_SCRIPTS when the flag is set. Run this AFTER the run
+/// splice: code on disk may contain `!!!org/model!!!` text (bake.py does),
+/// and it must reach the page as code, never as a hole.
+pub fn splice_reads(content: &str) -> (String, bool) {
+    let b = content.as_bytes();
+    let mut out = String::with_capacity(content.len());
+    let mut last = 0;
+    let mut i = 0;
+    let mut spliced = false;
+    while i + 7 <= b.len() {
+        if &b[i..i + 3] == b"!!!" {
+            if let Some(rel) = find_marker_end(&b[i + 3..]) {
+                if rel > 0 {
+                    let j = i + 3 + rel + 3;
+                    if let Some((path, selectors)) = parse_read(&content[i + 3..i + 3 + rel]) {
+                        let code = fs::read_to_string(&path)
+                            .map(|t| extract_defs(&t, &selectors))
+                            .unwrap_or_else(|_| format!("[unreadable: {}]", path.display()));
+                        out.push_str(&content[last..i]);
+                        out.push_str(&format!(
+                            "<pre><code class=\"language-{}\">{}</code></pre>",
+                            lang_of(&path),
+                            escape_code(code.trim_end())
+                        ));
+                        last = j;
+                        spliced = true;
+                        i = j;
+                        continue;
+                    }
+                    i += 3; // not a read marker: skip the opener, keep scanning
+                    continue;
+                }
+            }
+        }
+        i += 1;
+    }
+    out.push_str(&content[last..]);
+    (out, spliced)
+}
+
+/// Count the holes in a post body, in order.
+
 #[derive(Clone, Debug)]
 pub struct Run {
     pub model: String,
@@ -342,6 +482,56 @@ mod tests {
             assert!(at >= pos, "{tok} out of order in DOM: {dom}");
             pos = at;
         }
+    }
+
+    #[test]
+    fn read_markers_render_code_blocks() {
+        let f = PathBuf::from("__read_fixture_a.py");
+        fs::write(&f, "def alpha():\n    return 'a < b & c'\n\ndef beta():\n    return 2\n").unwrap();
+        let (out, spliced) = splice_reads("before !!!read:__read_fixture_a.py!!! after");
+        assert!(spliced);
+        assert!(out.contains("<pre><code class=\"language-python\">"));
+        assert!(out.contains("&#x27;" ) || out.contains("'a &lt; b &amp; c'"));
+        assert!(out.starts_with("before ") && out.ends_with(" after"));
+        fs::remove_file(&f).unwrap();
+    }
+
+    #[test]
+    fn read_selectors_pick_single_defs() {
+        let f = PathBuf::from("__read_fixture_b.py");
+        fs::write(&f, "def alpha():\n    return 1\n\ndef beta():\n    return 2\n").unwrap();
+        let (out, _) = splice_reads("!!!__read_fixture_b.py:def beta!!!");
+        assert!(out.contains("def beta():"));
+        assert!(out.contains("return 2"));
+        assert!(!out.contains("def alpha():"), "alpha leaked into beta's selection");
+        let (out, _) = splice_reads("!!!read:__read_fixture_b.py:def gamma!!!");
+        assert!(out.contains("[def not found: gamma]"));
+        fs::remove_file(&f).unwrap();
+    }
+
+    #[test]
+    fn read_markers_refuse_escape_and_prose() {
+        // `..` paths and nonexistent files are left as plain text.
+        let (out, spliced) = splice_reads("x !!!read:../etc/passwd!!! y !!!not a file!!! z");
+        assert!(!spliced);
+        assert!(out.contains("!!!read:../etc/passwd!!!"));
+        assert!(out.contains("!!!not a file!!!"));
+    }
+
+    #[test]
+    fn code_containing_model_markers_survives_as_code() {
+        // bake.py's own source contains `!!!org/model!!!` text. The run
+        // splice happens first on the original post; the read splice runs
+        // second, so marker-looking text inside a file is never a hole.
+        let f = PathBuf::from("__read_fixture_c.py");
+        fs::write(&f, "# sees !!!x/y!!! markers\n").unwrap();
+        let post = format!("narrative !!!a/b!!! then !!!read:{}!!!", f.display());
+        let rendered = splice(&post, &["<RUNCELL>".to_string()]);
+        let (out, had_reads) = splice_reads(&rendered);
+        assert!(had_reads);
+        assert!(out.contains("<RUNCELL>"));
+        assert!(out.contains("# sees !!!x/y!!! markers"));
+        fs::remove_file(&f).unwrap();
     }
 
     #[test]
