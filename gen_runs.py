@@ -36,12 +36,28 @@ def key() -> str:
 
 def run(k: str, model: str, prompt: str) -> str:
     import urllib.request
-    body = json.dumps({"model": model, "reasoning": {"effort": "high"}, "messages": [{"role": "user", "content": prompt}]}).encode()
-    req = urllib.request.Request(API, data=body, headers={
-        "Authorization": f"Bearer {k}", "Content-Type": "application/json",
-        "HTTP-Referer": "https://tommy.isnt.online", "X-Title": "blog jukebox bake"})
-    with urllib.request.urlopen(req, timeout=300) as r:
-        return json.load(r)["choices"][0]["message"]["content"]
+    import urllib.error
+    def post(payload: dict) -> dict:
+        req = urllib.request.Request(API, data=json.dumps(payload).encode(), headers={
+            "Authorization": f"Bearer {k}", "Content-Type": "application/json",
+            "HTTP-Referer": "https://tommy.isnt.online", "X-Title": "blog jukebox bake"})
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            try:
+                detail = e.read().decode()[:500]
+            except Exception:
+                detail = ""
+            sys.exit(f"openrouter {e.code} for {model}: {detail}")
+    out = post({"model": model, "reasoning": {"effort": "high"},
+                "messages": [{"role": "user", "content": prompt}]})
+    msg = out["choices"][0]["message"]
+    if not (msg.get("content") or "").strip():
+        # Model ignored reasoning and returned nothing usable; retry plain.
+        out = post({"model": model, "messages": [{"role": "user", "content": prompt}]})
+        msg = out["choices"][0]["message"]
+    return msg["content"]
 
 
 def holes(post: str):
