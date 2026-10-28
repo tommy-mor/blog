@@ -338,6 +338,8 @@ details.readcode {
 }
 details.readcode summary {
   color: #9370db;
+  margin: 0;  /* the global summary rule uses a negative margin that
+                 overhangs the panel's right edge when collapsed */
 }
 /* wrap long code lines instead of hiding them behind a horizontal
    scrollbar -- the right edge of every line stays readable */

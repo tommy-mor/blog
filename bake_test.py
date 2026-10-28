@@ -16,7 +16,7 @@ Two invariants, one per test:
    no-op. The OpenRouter call is mocked to a hash of the prompt, so
    outputs change exactly when prompts do.
 """
-import contextlib, hashlib, io, shutil, sys
+import contextlib, hashlib, html as htmlmod, io, os, re, shutil, subprocess, sys, time, urllib.request
 from pathlib import Path
 
 import bake
@@ -102,6 +102,89 @@ def test_chain(ops):
         post_path.unlink(missing_ok=True)
         shutil.rmtree(Path("posts/runs") / slug, ignore_errors=True)
         bake.call, bake.key, sys.argv = real_call, real_key, real_argv
+
+
+def test_read_expansion_and_hole_numbering():
+    """Read markers expand to code, and never shift hole numbering:
+    turns for h1 must land after the prose above h1 even when read
+    markers sit between them."""
+    src = Path("__read_fixture.py")
+    root = Path("posts/runs") / "__read_align__"
+    try:
+        src.write_text("def alpha():\n    return 1\n\ndef beta():\n    return 2\n")
+        (root / "h1").mkdir(parents=True, exist_ok=True)
+        (root / "h1" / "m__a.html").write_text("RUN-ONE")
+        bang = "!" * 3
+        post = bang.join(("P0", "read:__read_fixture.py:def beta", "P1", "x/a", "P2", "x/b", "P3"))
+        start = list(bake.MARKER.finditer(post))[2].start()  # bake hole 2 (x/b)
+        ctx = bake.build_ctx(post, start, "__read_align__")
+        tokens = ["P0", "def beta():", "P1", "RUN-ONE", "P2"]
+        pos = [ctx.find(t) for t in tokens]
+        assert -1 not in pos and pos == sorted(pos), f"wrong order: {list(zip(tokens, pos))}"
+        assert "def alpha():" not in ctx, "selector leaked the unselected def"
+        assert "P3" not in ctx and "RUN-TWO" not in ctx, "leaks below the hole"
+    finally:
+        src.unlink(missing_ok=True)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_dom_prompt_parity():
+    """Integration: boot the real server and prove the published page and
+    the model prompt are the same document -- every chunk the reader sees
+    (prose, read-marker code, baked turns) appears in the prompt, in the
+    same order. This is the test that would have caught read markers
+    rendering in the DOM but missing from the prompt."""
+    binary = Path("target/debug/blog")
+    if not binary.exists():
+        subprocess.run(["cargo", "build", "--quiet"], check=True)
+    post_path = Path("posts/20990101_parity.html")
+    src = Path("__parity_src.py")
+    runs = Path("posts/runs/20990101_parity")
+    db = "/tmp/parity_blog.redb"
+    proc = None
+    try:
+        src.write_text("def parity_fn():\n    return 'PARITY-CODE-TOKEN'\n")
+        bang = "!" * 3
+        body = bang.join(("PARITY-PROSE-1", "read:__parity_src.py",
+                          "PARITY-PROSE-2", "x/a", "PARITY-PROSE-3", "x/b", "PARITY-PROSE-4"))
+        post_path.write_text(f"parity test\n{body}\n")
+        full = post_path.read_text()
+        marks = list(bake.MARKER.finditer(full))
+        # bake hole 1 with the mock, exactly as bake.py would write it
+        ctx1 = bake.build_ctx(full, marks[1].start(), "20990101_parity")
+        digest = hashlib.md5(f"you are x/a\n\n{ctx1}".encode()).hexdigest()
+        (runs / "h1").mkdir(parents=True)
+        (runs / "h1" / f"{digest}__x__a.html").write_text("RUN-BODY-1\n")
+
+        env = {**os.environ, "PORT": "18099", "BLOG_DB": db}
+        proc = subprocess.Popen([str(binary)], env=env,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        page = None
+        for _ in range(100):
+            try:
+                page = urllib.request.urlopen("http://localhost:18099/post/parity-test", timeout=1).read().decode()
+                break
+            except Exception:
+                time.sleep(0.1)
+        assert page, "test server never came up"
+
+        visible = re.sub(r"<script.*?</script>", " ", page, flags=re.S)
+        visible = htmlmod.unescape(re.sub(r"<[^>]+>", " ", visible))
+        prompt = bake.build_ctx(full, marks[2].start(), "20990101_parity")  # prompt for hole 2
+
+        tokens = ["PARITY-PROSE-1", "PARITY-CODE-TOKEN", "PARITY-PROSE-2",
+                  "RUN-BODY-1", "PARITY-PROSE-3"]
+        for name, text in (("DOM", visible), ("prompt", prompt)):
+            pos = [text.find(t) for t in tokens]
+            assert -1 not in pos, f"{name} is missing chunks: {[t for t, p in zip(tokens, pos) if p == -1]}"
+            assert pos == sorted(pos), f"{name} order wrong: {list(zip(tokens, pos))}"
+    finally:
+        if proc:
+            proc.kill()
+        post_path.unlink(missing_ok=True)
+        src.unlink(missing_ok=True)
+        shutil.rmtree(runs, ignore_errors=True)
+        Path(db).unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

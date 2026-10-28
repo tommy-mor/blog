@@ -45,22 +45,63 @@ def call(k: str, model: str, prompt: str) -> str:
         sys.exit(f"openrouter {e.code} for {model}: {e.read().decode()[:300]}")
 
 
+def read_code(inner: str) -> str | None:
+    """Expand a !!!read:path[:def fn]...!!! marker to code, mirroring the
+    Rust renderer (src/runs.rs): whole file, or named defs with bodies.
+    Returns None for anything that isn't a read of an existing file."""
+    inner = inner.removeprefix("read:")
+    path, *sels = (s.strip() for s in inner.split(":"))
+    p = Path(path)
+    if ".." in p.parts or not p.is_file():
+        return None
+    text = p.read_text()
+    if not sels:
+        return text.strip()
+    lines = text.splitlines()
+    out = []
+    for sel in sels:
+        name = re.sub(r"[^A-Za-z0-9_]+$", "", sel.split()[-1])
+        for idx, line in enumerate(lines):
+            t = line.lstrip()
+            head = t.split(maxsplit=1)[0] if t else ""
+            if head in ("def", "fn") and t[len(head):].lstrip().startswith(name + "("):
+                base = len(line) - len(t)
+                out.append(line)
+                for follow in lines[idx + 1:]:
+                    ft = follow.strip()
+                    if not ft or len(follow) - len(follow.lstrip()) > base:
+                        out.append(follow)
+                    else:
+                        if ft and all(c in "})]" for c in ft):
+                            out.append(follow)
+                        break
+                break
+        else:
+            out.append(f"[def not found: {name}]")
+    return "\n".join(out)
+
+
 def build_ctx(post: str, start: int, slug: str) -> str:
-    """The context buildup: prose and baked turns interleaved at marker
-    positions -- the reader's exact order. Code reaches the prompt only
-    when the post asks for it, via !!!read:...!!! markers."""
+    """The context buildup: everything above the marker, in the reader's
+    exact order -- prose, read-marker code, and baked turns interleaved at
+    marker positions. Holes count model markers only; a read marker never
+    shifts the numbering."""
     me = Path(__file__).name
     chunks = []
-    narr = MARKER.split(post[:start])[::2]  # odd slots are captured model ids
-    for k, seg in enumerate(narr):
-        if seg.strip():
-            chunks.append(seg.strip())
-        if k + 1 < len(narr):  # the turns baked at hole k+1 belong right here
-            d = Path("posts/runs") / slug / f"h{k + 1}"
+    hole = 0
+    for i, part in enumerate(MARKER.split(post[:start])):
+        if i % 2 == 0:  # prose between markers
+            if part.strip():
+                chunks.append(part.strip())
+        elif MODEL.fullmatch(part.strip()):  # a hole: its baked turns land here
+            hole += 1
+            d = Path("posts/runs") / slug / f"h{hole}"
             for p in (sorted(d.glob("*.html")) if d.is_dir() else []):
                 if t := p.read_text().strip():
                     model = HASHED.sub("", p.stem).replace("__", "/")
-                    chunks.append(f"--- baked h{k + 1} ({model}) ---\n{t}")
+                    chunks.append(f"--- baked h{hole} ({model}) ---\n{t}")
+        elif code := read_code(part.strip()):  # a read marker: the code itself
+            chunks.append(f"--- {part.strip()} ---\n{code}")
     ctx = "\n\n".join(chunks).strip()
     return (f"[{me}: this prompt is in exactly the order the reader "
             f"encounters it, prose and AI turns interleaved]\n\n{ctx}")

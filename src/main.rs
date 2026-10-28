@@ -75,7 +75,7 @@ async fn ws_handler(
 async fn main() {
     let state = Arc::new(AppState {
         rooms: presence::Rooms::default(),
-        db: counter::open("data/counter.redb"),
+        db: counter::open(&std::env::var("BLOG_DB").unwrap_or_else(|_| "data/counter.redb".into())),
     });
 
     let app = Router::new()
