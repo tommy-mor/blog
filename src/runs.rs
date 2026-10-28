@@ -792,7 +792,14 @@ mod tests {
         // Every baked file on disk must hash-match the prompt the
         // renderer will rebuild. If you edited the post, rebake first:
         //   bb bake.clj posts/20261024_rlbot.html
-        let post = fs::read_to_string("posts/20261024_rlbot.html").unwrap();
+        // NOTE: go through posts::load() like post_page does. Hashing a
+        // raw file read here while the renderer hashes something else
+        // (e.g. title-stripped content) passes while the page hides runs.
+        let loaded = crate::posts::load()
+            .into_iter()
+            .find(|p| p.run_key == "20261024_rlbot")
+            .expect("post 20261024_rlbot missing from posts::load()");
+        let post = loaded.raw;
         let slug = "20261024_rlbot";
         let mut checked = 0;
         for (idx, _) in marker_spans(&post).iter().enumerate() {

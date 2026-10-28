@@ -44,7 +44,7 @@ async fn post_page(Path(slug): Path<String>, State(state): State<SharedState>) -
                         let hole = format!("h{}", idx + 1);
                         // Only md5-verified fresh runs render; stale
                         // bakes are skipped until rebaked.
-                        let baked = runs::fresh_runs(&post.run_key, idx, &post.content);
+                        let baked = runs::fresh_runs(&post.run_key, idx, &post.raw);
                         if baked.is_empty() {
                             String::new()
                         } else {

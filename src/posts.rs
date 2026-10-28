@@ -8,6 +8,11 @@ pub struct Post {
     pub date: NaiveDate,
     pub slug: String,
     pub run_key: String,
+    /// Full file text, title line included. The bakers (bake.clj/bake.py)
+    /// hash this verbatim; `content` (body after the title line) is only
+    /// for display. Hashing `content` instead of `raw` silently mismatches
+    /// every digest and hides all runs.
+    pub raw: String,
 }
 
 pub fn load() -> Vec<Post> {
@@ -21,8 +26,8 @@ pub fn load() -> Vec<Post> {
         })
         .filter_map(|e| {
             let filename = e.file_name().into_string().ok()?;
-            let content = fs::read_to_string(e.path()).ok()?;
-            let (title_line, body) = content.split_once('\n')?;
+            let raw = fs::read_to_string(e.path()).ok()?;
+            let (title_line, body) = raw.split_once('\n')?;
             let title = title_line.trim().to_string();
             let date_str = filename.split('_').next()?;
             let date = NaiveDate::parse_from_str(date_str, "%Y%m%d").ok()?;
@@ -33,6 +38,7 @@ pub fn load() -> Vec<Post> {
                 date,
                 run_key: filename.trim_end_matches(".html").to_string(),
                 slug,
+                raw,
             })
         })
         .collect();
