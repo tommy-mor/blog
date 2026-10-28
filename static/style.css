@@ -329,3 +329,20 @@ code.hljs {
 .run-body {
   margin: 0.75em 0;
 }
+/* read markers: source files spliced into the page, collapsed by default.
+   Purple accent to distinguish from the olive run cells. */
+details.readcode {
+  border-left: 3px solid #9370db;
+  padding-left: 1em;
+  margin: 1.5em 0;
+}
+details.readcode summary {
+  color: #9370db;
+}
+/* wrap long code lines instead of hiding them behind a horizontal
+   scrollbar -- the right edge of every line stays readable */
+details.readcode pre,
+details.readcode pre code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}

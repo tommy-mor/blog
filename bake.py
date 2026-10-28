@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.12"
-# dependencies = ["hypothesis"]
-# ///
 """Bake one AI turn per !!!org/model!!! marker in a blog post.
 
-    uv run bake.py post.html [--hole N] [--override] [--dry-run]
+    ./bake.py post.html [--hole N] [--override] [--dry-run]
 
-Each marker names its model. The prompt is this script, then the prose
-above the marker interleaved with every earlier baked turn -- exactly the
-order the reader encounters them (self-tested at load, banner in the
-prompt). Runs live at posts/runs/<post>/h<N>/<md5>__<model>.html; the
+Each marker names its model. The prompt is the prose above the marker
+interleaved with every earlier baked turn -- exactly the order the reader
+encounters them (order invariant tested in bake_test.py). Code blocks
+enter only via the post's own !!!read:...!!! markers, never hardcoded.
+Runs live at posts/runs/<post>/h<N>/<md5>__<model>.html; the
 md5 covers the whole prompt, so an edited upstream turn changes every
 downstream digest, and a plain run rebakes exactly the stale tail.
 """
-import argparse, hashlib, json, os, re, shutil, sys, urllib.request, urllib.error
+import argparse, hashlib, json, os, re, sys, urllib.request, urllib.error
 from pathlib import Path
 
 API = "https://openrouter.ai/api/v1/chat/completions"
@@ -49,10 +46,11 @@ def call(k: str, model: str, prompt: str) -> str:
 
 
 def build_ctx(post: str, start: int, slug: str) -> str:
-    """The context buildup: this script first, then prose and baked turns
-    interleaved at marker positions -- the reader's exact order."""
+    """The context buildup: prose and baked turns interleaved at marker
+    positions -- the reader's exact order. Code reaches the prompt only
+    when the post asks for it, via !!!read:...!!! markers."""
     me = Path(__file__).name
-    chunks = [f"--- {me} (the script baking you) ---\n{Path(__file__).read_text().strip()}"]
+    chunks = []
     narr = MARKER.split(post[:start])[::2]  # odd slots are captured model ids
     for k, seg in enumerate(narr):
         if seg.strip():
@@ -64,114 +62,8 @@ def build_ctx(post: str, start: int, slug: str) -> str:
                     model = HASHED.sub("", p.stem).replace("__", "/")
                     chunks.append(f"--- baked h{k + 1} ({model}) ---\n{t}")
     ctx = "\n\n".join(chunks).strip()
-    return (f"[{me}: self-tested at launch -- this prompt is in exactly the "
-            f"order the reader encounters it, prose and AI turns interleaved]\n\n{ctx}")
-
-
-# Self-test at load: the interleave must put each hole's turns after the
-# prose above it, leak nothing below the hole, and leak no captured model
-# ids -- regression-guarding the re.split bug that once shipped two
-# shelves (all prose, then all turns) instead of the published exchange.
-def _selftest() -> None:
-    a, b, c = ("PROSE-" + x for x in ("ONE", "TWO", "THREE"))
-    r1, r2, xa, xb = "RUN-" + "ONE", "RUN-" + "TWO", "x" + "/a", "x" + "/b"
-    root = Path("posts/runs") / "__bake_selftest__"
-    try:
-        (root / "h1").mkdir(parents=True, exist_ok=True)
-        (root / "h1" / "m__a.html").write_text(r1)
-        (root / "h2").mkdir(parents=True, exist_ok=True)
-        (root / "h2" / "m__b.html").write_text(r2)
-        bang = "!" * 3
-        post = bang.join((a, xa, b, xb, c))
-        ctx = build_ctx(post, list(MARKER.finditer(post))[1].start(), "__bake_selftest__")
-        order = [ctx.find(t) for t in (a, r1, b)]
-        assert -1 not in order and order == sorted(order), "not interleaved in reader order"
-        assert r2 not in ctx and c not in ctx, "leaks text below the hole"
-        assert xa not in ctx and xb not in ctx, "captured model ids leak as chunks"
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
-
-
-_selftest()
-
-
-# Quickcheck at load: whatever the edit/bake order, a full bake always
-# restores the chain -- every file on disk is the output of the prompt
-# that the current post and its upstream turns produce -- and a second
-# bake is a no-op. The OpenRouter call is mocked to a hash of the prompt,
-# so outputs change exactly when prompts do.
-def _quickcheck() -> None:
-    try:
-        from hypothesis import given, settings, strategies as st
-    except ImportError:
-        print("bake.py: hypothesis missing, quickcheck skipped (use `uv run bake.py`)", file=sys.stderr)
-        return
-    import contextlib, io
-
-    def digests_now(post_text: str, slug: str) -> dict:
-        out = {}
-        for m in MARKER.finditer(post_text):
-            model = m.group(1).strip()
-            if MODEL.fullmatch(model):
-                prompt = f"you are {model}\n\n{build_ctx(post_text, m.start(), slug)}"
-                out[len(out) + 1] = hashlib.md5(prompt.encode()).hexdigest()
-        return out
-
-    def consistent(post_text: str, slug: str) -> bool:
-        for n, want in digests_now(post_text, slug).items():
-            files = list((Path("posts/runs") / slug / f"h{n}").glob("*.html"))
-            if len(files) != 1 or not files[0].stem.startswith(want):
-                return False
-        return True
-
-    real_call, real_key = call, key
-
-    @settings(max_examples=8, deadline=None, derandomize=True, database=None)
-    @given(st.lists(st.tuples(st.sampled_from(["e", "b", "h"]), st.integers(0, 99)),
-                    min_size=1, max_size=12))
-    def prop(ops):
-        global call, key
-        call = lambda k, model, prompt: hashlib.sha256(prompt.encode()).hexdigest()  # mock oneliner
-        key = lambda: "quickcheck"
-        slug, post_path = "__quickcheck__", Path("__quickcheck__.html")
-        bang, segs, step = "!!!", ["alpha", "bravo", "charlie", "delta", "echo"], [0]
-        def text() -> str:
-            parts = [segs[0]]
-            for i, model in enumerate("x/" + s for s in "abcd"):  # no literal ids in source
-                parts += [model, segs[i + 1]]
-            return bang.join(parts)
-        try:
-            for kind, i in ops:
-                if kind == "e":  # edit prose segment i; holes above it go stale
-                    step[0] += 1
-                    segs[i % 5] += f" v{step[0]}"
-                post_path.write_text(text())
-                if kind == "e":
-                    continue
-                sys.argv = ["bake.py", str(post_path)] + (
-                    [] if kind == "b" else ["--hole", str(i % 4 + 1)])
-                with contextlib.redirect_stdout(io.StringIO()):
-                    main()
-                if kind == "b":  # a full bake must heal any staleness
-                    assert consistent(post_path.read_text(), slug), f"chain broken after {ops}"
-            sys.argv = ["bake.py", str(post_path)]
-            with contextlib.redirect_stdout(io.StringIO()):
-                main()
-            assert consistent(post_path.read_text(), slug), f"chain broken at end of {ops}"
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                main()
-            assert "baking" not in buf.getvalue(), f"second bake not a no-op after {ops}"
-        finally:
-            post_path.unlink(missing_ok=True)
-            shutil.rmtree(Path("posts/runs") / slug, ignore_errors=True)
-
-    real_argv = sys.argv[:]
-    try:
-        prop()
-    finally:
-        globals()["call"], globals()["key"] = real_call, real_key
-        sys.argv = real_argv
+    return (f"[{me}: this prompt is in exactly the order the reader "
+            f"encounters it, prose and AI turns interleaved]\n\n{ctx}")
 
 
 def main() -> None:
@@ -215,8 +107,6 @@ def main() -> None:
         out.write_text(text)
         print(f"h{n}/{model}: wrote {out}\n{text}")
 
-
-_quickcheck()  # needs main() defined; still runs at load, before any CLI work
 
 if __name__ == "__main__":
     main()

@@ -177,7 +177,9 @@ pub fn splice_reads(content: &str) -> (String, bool) {
                             .unwrap_or_else(|_| format!("[unreadable: {}]", path.display()));
                         out.push_str(&content[last..i]);
                         out.push_str(&format!(
-                            "<pre><code class=\"language-{}\">{}</code></pre>",
+                            "<details class=\"readcode\"><summary>{}</summary>\
+                             <pre><code class=\"language-{}\">{}</code></pre></details>",
+                            escape_code(content[i + 3..i + 3 + rel].trim()),
                             lang_of(&path),
                             escape_code(code.trim_end())
                         ));
@@ -490,6 +492,8 @@ mod tests {
         fs::write(&f, "def alpha():\n    return 'a < b & c'\n\ndef beta():\n    return 2\n").unwrap();
         let (out, spliced) = splice_reads("before !!!read:__read_fixture_a.py!!! after");
         assert!(spliced);
+        assert!(out.contains("<details class=\"readcode\"><summary>read:__read_fixture_a.py</summary>"));
+        assert!(!out.contains("readcode\" open"), "code blocks must start collapsed");
         assert!(out.contains("<pre><code class=\"language-python\">"));
         assert!(out.contains("&#x27;" ) || out.contains("'a &lt; b &amp; c'"));
         assert!(out.starts_with("before ") && out.ends_with(" after"));
