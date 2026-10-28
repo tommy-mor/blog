@@ -7,8 +7,21 @@
 use std::fs;
 use std::path::PathBuf;
 
-/// The hole marker: a `!!!model!!!` block names its model
-/// (e.g. `!!!openai/gpt-6-luna!!!`). Every `!!!...!!!` run is a hole.
+/// A marker's inner text must look like an openrouter id
+/// (`org/model` -- no whitespace, exactly the model path). This keeps
+/// prose exclamations (`a thing or two!!!`) from pairing with the next
+/// real marker and swallowing everything between them.
+fn valid_marker_inner(inner: &str) -> bool {
+    !inner.is_empty()
+        && inner.contains('/')
+        && inner
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-' | b'/'))
+}
+
+/// The hole marker: a `!!!org/model!!!` block names its model
+/// (e.g. `!!!openai/gpt-6-luna!!!`). Only valid runs are holes;
+/// prose `!!!` that doesn't name a model is left alone as text.
 pub fn marker_spans(content: &str) -> Vec<(usize, usize)> {
     let b = content.as_bytes();
     let mut spans = Vec::new();
@@ -22,8 +35,14 @@ pub fn marker_spans(content: &str) -> Vec<(usize, usize)> {
                     continue;
                 }
                 let j = i + 3 + rel + 3;
-                spans.push((i, j));
-                i = j;
+                if valid_marker_inner(&content[i + 3..i + 3 + rel]) {
+                    spans.push((i, j));
+                    i = j;
+                    continue;
+                }
+                // Looks like punctuation, not a model: skip the opener
+                // and keep scanning (the closer may open a real marker).
+                i += 3;
                 continue;
             }
         }
@@ -169,11 +188,22 @@ mod tests {
     fn marker_spans_find_model_blocks() {
         let body = "a!!!m/n!!!b!!!org/m!!!c";
         assert_eq!(marker_spans(body), vec![(1, 10), (11, 22)]);
-        // Angle brackets are plain text now: only the inner run counts.
-        assert_eq!(marker_spans("a<!!!AI!!!>b"), vec![(2, 10)]);
+        // Angle brackets are plain text and AI is not a model: no marker.
+        assert!(marker_spans("a<!!!AI!!!>b").is_empty());
         // Empty !!!!!! is not a marker; unterminated !!! isn't either.
         assert!(marker_spans("a!!!!!!b").is_empty());
         assert!(marker_spans("a!!!oops b").is_empty());
+    }
+
+    #[test]
+    fn marker_spans_ignore_prose_bangs() {
+        // A prose !!! must not pair with the next real marker and
+        // swallow the paragraphs between them.
+        let body = "two!!!\n\n<p>mid</p>\n!!!a/b!!!\nend";
+        assert_eq!(marker_spans(&body).len(), 1);
+        let out = splice(&body, &[String::from("<X>")]);
+        assert!(out.contains("two!!!"));
+        assert!(!out.contains("!!!a/b!!!"));
     }
 
     #[test]

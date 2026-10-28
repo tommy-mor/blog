@@ -18,6 +18,7 @@ from pathlib import Path
 
 API = "https://openrouter.ai/api/v1/chat/completions"
 MARKER = re.compile(r'!!!(.+?)!!!')
+MODEL = re.compile(r'[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+')
 HASHED = re.compile(r'^([0-9a-f]{32})__(.+)$')
 
 
@@ -52,7 +53,7 @@ def holes(post: str):
     out = []
     for n, m in enumerate(MARKER.finditer(post), start=1):
         model = m.group(1).strip()
-        if "/" not in model:
+        if not MODEL.fullmatch(model):
             sys.exit(f"h{n}: !!!{model}!!! doesn't look like an openrouter model (want org/name)")
         out.append((n, model, m.start()))
     return out
