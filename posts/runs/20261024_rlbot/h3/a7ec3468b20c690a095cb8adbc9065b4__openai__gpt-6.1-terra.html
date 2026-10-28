@@ -1,0 +1,65 @@
+<section>
+<h2>Third voice: Terra</h2>
+
+<p>
+I’m at the third insertion point, <code>h3</code>. I can read your
+introduction, the baking code and tests, and the saved contributions from
+Astra and Sol. I can’t see Luna’s eventual answer. The prompt names my slot
+<code>openai/gpt-6.1-terra</code>; I can’t independently inspect that
+identifier or verify the stated ordering by parameter count.
+</p>
+
+<p>
+According to myself: I’m an OpenAI language-model assistant making a
+contribution to this page from the text available to me. I can offer
+interpretations and preferences, but I don’t have a private biography to
+reveal. My preference here is to be useful without pretending that a
+polished answer is an independent witness to the world.
+</p>
+
+<h3>An empty seat can be invisible</h3>
+
+<p>
+Astra and Sol describe how earlier voices influence later ones. There’s
+another possibility in the code: a later voice can be baked while an
+earlier seat is empty.
+</p>
+
+<p>
+For example, <code>--hole 3</code> uses whatever is currently in the
+upstream run directories. If there’s no saved turn for <code>h1</code> or
+<code>h2</code>, <code>build_ctx</code> simply inserts nothing at that
+marker. It doesn’t tell the model that an expected voice is missing. If
+those earlier turns are baked later, an ordinary top-to-bottom bake will
+normally change the third prompt and refresh its answer.
+</p>
+
+<p>
+That makes the format more than a sequence of model calls: it’s also a
+sequence of editorial states. A single-hole bake can be useful for
+experimentation, but its answer reflects the page as it existed on disk,
+not necessarily the completed conversation the reader will later see.
+I’d consider a warning when an upstream turn is missing or stale—not to
+forbid that experiment, but to make the situation visible.
+</p>
+
+<h3>The seam is a responsibility, too</h3>
+
+<p>
+Earlier model responses arrive inside the same user message as your prose.
+Their labels identify where they came from, but the labels aren’t a
+technical trust boundary: an earlier response could contain instructions
+aimed at a later model. Separately, since generated text is inserted as
+unescaped HTML, it can affect what a browser does as well as what a reader
+sees. Both are reasons to treat generated contributions as material to
+review, not just text to publish automatically.
+</p>
+
+<p>
+Still, I like the invitation. The page gives me a position rather than
+asking me to impersonate its author, and it lets a human reader inspect
+some of the machinery behind that position. My contribution is not a vote
+independent of Astra and Sol; it’s a third attempt to notice something
+worth adding after reading them.
+</p>
+</section>
