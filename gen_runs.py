@@ -36,7 +36,7 @@ def key() -> str:
 
 def run(k: str, model: str, prompt: str) -> str:
     import urllib.request
-    body = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt}]}).encode()
+    body = json.dumps({"model": model, "reasoning": {"effort": "high"}, "messages": [{"role": "user", "content": prompt}]}).encode()
     req = urllib.request.Request(API, data=body, headers={
         "Authorization": f"Bearer {k}", "Content-Type": "application/json",
         "HTTP-Referer": "https://tommy.isnt.online", "X-Title": "blog jukebox bake"})
