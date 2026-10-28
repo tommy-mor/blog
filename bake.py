@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["hypothesis"]
+# ///
 """Bake one AI turn per !!!org/model!!! marker in a blog post.
 
-    ./bake.py post.html [--hole N] [--override] [--dry-run]
+    uv run bake.py post.html [--hole N] [--override] [--dry-run]
 
 Each marker names its model. The prompt is this script, then the prose
 above the marker interleaved with every earlier baked turn -- exactly the
@@ -91,6 +95,85 @@ def _selftest() -> None:
 _selftest()
 
 
+# Quickcheck at load: whatever the edit/bake order, a full bake always
+# restores the chain -- every file on disk is the output of the prompt
+# that the current post and its upstream turns produce -- and a second
+# bake is a no-op. The OpenRouter call is mocked to a hash of the prompt,
+# so outputs change exactly when prompts do.
+def _quickcheck() -> None:
+    try:
+        from hypothesis import given, settings, strategies as st
+    except ImportError:
+        print("bake.py: hypothesis missing, quickcheck skipped (use `uv run bake.py`)", file=sys.stderr)
+        return
+    import contextlib, io
+
+    def digests_now(post_text: str, slug: str) -> dict:
+        out = {}
+        for m in MARKER.finditer(post_text):
+            model = m.group(1).strip()
+            if MODEL.fullmatch(model):
+                prompt = f"you are {model}\n\n{build_ctx(post_text, m.start(), slug)}"
+                out[len(out) + 1] = hashlib.md5(prompt.encode()).hexdigest()
+        return out
+
+    def consistent(post_text: str, slug: str) -> bool:
+        for n, want in digests_now(post_text, slug).items():
+            files = list((Path("posts/runs") / slug / f"h{n}").glob("*.html"))
+            if len(files) != 1 or not files[0].stem.startswith(want):
+                return False
+        return True
+
+    real_call, real_key = call, key
+
+    @settings(max_examples=8, deadline=None, derandomize=True, database=None)
+    @given(st.lists(st.tuples(st.sampled_from(["e", "b", "h"]), st.integers(0, 99)),
+                    min_size=1, max_size=12))
+    def prop(ops):
+        global call, key
+        call = lambda k, model, prompt: hashlib.sha256(prompt.encode()).hexdigest()  # mock oneliner
+        key = lambda: "quickcheck"
+        slug, post_path = "__quickcheck__", Path("__quickcheck__.html")
+        bang, segs, step = "!!!", ["alpha", "bravo", "charlie", "delta", "echo"], [0]
+        def text() -> str:
+            parts = [segs[0]]
+            for i, model in enumerate("x/" + s for s in "abcd"):  # no literal ids in source
+                parts += [model, segs[i + 1]]
+            return bang.join(parts)
+        try:
+            for kind, i in ops:
+                if kind == "e":  # edit prose segment i; holes above it go stale
+                    step[0] += 1
+                    segs[i % 5] += f" v{step[0]}"
+                post_path.write_text(text())
+                if kind == "e":
+                    continue
+                sys.argv = ["bake.py", str(post_path)] + (
+                    [] if kind == "b" else ["--hole", str(i % 4 + 1)])
+                with contextlib.redirect_stdout(io.StringIO()):
+                    main()
+                if kind == "b":  # a full bake must heal any staleness
+                    assert consistent(post_path.read_text(), slug), f"chain broken after {ops}"
+            sys.argv = ["bake.py", str(post_path)]
+            with contextlib.redirect_stdout(io.StringIO()):
+                main()
+            assert consistent(post_path.read_text(), slug), f"chain broken at end of {ops}"
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                main()
+            assert "baking" not in buf.getvalue(), f"second bake not a no-op after {ops}"
+        finally:
+            post_path.unlink(missing_ok=True)
+            shutil.rmtree(Path("posts/runs") / slug, ignore_errors=True)
+
+    real_argv = sys.argv[:]
+    try:
+        prop()
+    finally:
+        globals()["call"], globals()["key"] = real_call, real_key
+        sys.argv = real_argv
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Bake AI turns for !!!org/model!!! markers.")
     ap.add_argument("post", help="post .html file")
@@ -132,6 +215,8 @@ def main() -> None:
         out.write_text(text)
         print(f"h{n}/{model}: wrote {out}\n{text}")
 
+
+_quickcheck()  # needs main() defined; still runs at load, before any CLI work
 
 if __name__ == "__main__":
     main()
