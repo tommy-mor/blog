@@ -70,7 +70,7 @@ fn runs_dir(slug: &str, hole: &str) -> PathBuf {
 }
 
 /// On disk `/` becomes `__` (safe in paths); in the DOM show the full key.
-/// (Encoding lives in gen_runs.py; Rust only decodes.)
+/// (Encoding lives in bake.py; Rust only decodes.)
 pub fn decode(stem: &str) -> String {
     stem.replace("__", "/")
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bake model runs: ./gen_runs.py post.html [--hole N | --all] [--override]
+"""Bake model runs: ./bake.py post.html [--hole N | --all] [--override]
 
 Each run lives at posts/runs/<slug>/h<i>/<md5>__<model>.html, where <md5>
 is the hash of the prompt. The prompt is everything above the marker --
@@ -76,10 +76,15 @@ def holes(post: str):
 
 
 def build_ctx(post: str, start: int, slug: str, hole_no: int) -> str:
-    """Prompt for a hole: narrative above the marker plus every baked
-    AI output above it, so each model sees what the earlier ones said."""
+    """Prompt for a hole: the bake script itself first, then the narrative
+    above the marker plus every baked AI output above it, so each model
+    sees the code generating it and what the earlier models said."""
+    chunks = []
+    for gen in sorted(Path(".").glob("bake*.py")):
+        chunks.append(f"--- {gen.name} (the script baking you) ---\n{gen.read_text().strip()}")
     ctx = MARKER.sub("", post[:start]).strip()
-    chunks = [ctx] if ctx else []
+    if ctx:
+        chunks.append(ctx)
     for i in range(1, hole_no):
         idir = Path("posts/runs") / slug / f"h{i}"
         if not idir.is_dir():
