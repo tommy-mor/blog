@@ -1,4 +1,5 @@
 mod counter;
+mod md5;
 mod posts;
 mod presence;
 mod runs;
@@ -41,7 +42,9 @@ async fn post_page(Path(slug): Path<String>, State(state): State<SharedState>) -
                     .enumerate()
                     .map(|(idx, _)| {
                         let hole = format!("h{}", idx + 1);
-                        let baked = runs::loads(&post.run_key, &hole);
+                        // Only md5-verified fresh runs render; stale
+                        // bakes are skipped until rebaked.
+                        let baked = runs::fresh_runs(&post.run_key, idx, &post.content);
                         if baked.is_empty() {
                             String::new()
                         } else {
