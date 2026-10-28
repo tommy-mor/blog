@@ -1,0 +1,331 @@
+summary {
+	cursor: pointer;
+	padding: 0.2em 0.35em;
+	margin: 0 -0.35em;
+	background-color: transparent;
+	transition: background-color 0.15s ease;
+}
+summary:hover {
+	background-color: rgba(147, 112, 219, 0.16);
+}
+details[open] .details-summary-text {
+	display: none;
+}
+details[open] summary::after {
+	content: "";
+}
+details:not([open]) summary::after {
+	content: none;
+}
+details[open] {
+	background: rgba(147, 112, 219, 0.16);
+	margin: 0.5em 0;
+	padding: 0.5em;
+}
+/* rhythm magic */
+body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,form,fieldset,p,blockquote,th,td {  
+        margin:0; padding:0; 
+	text-rendering: optimizeLegibility;
+}
+html {
+	background-color: #e6e6fa;
+	overflow-x: clip;
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+body { font-size: 87.5%;
+	font-family: "Georgia";
+	background-color: #e6e6fa;
+	margin: 0;
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	padding-left: 1.5em;
+	padding-right: 1.5em;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+/*  background: url("http://24ways.org/examples/compose-to-a-vertical-rhythm/underline.gif");*/
+}
+img, video, iframe {
+	max-width: 100%;
+	height: auto;
+}
+.content-panel {
+	max-width: 500px;
+	width: 100%;
+	margin-left: auto;
+	margin-right: auto;
+	box-sizing: border-box;
+	min-width: 0;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+}
+.content-panel pre,
+.content-panel table {
+	overflow-x: auto;
+	max-width: 100%;
+	min-width: 0;
+	-webkit-overflow-scrolling: touch;
+}
+.content-panel table {
+	display: block;
+}
+html>body { font-size: 12px;}
+p, ol,ul { font-size: 1em; margin-bottom: 1.5em; line-height: 1.5em;}
+pre { font-size: 1em; margin-bottom: 1.5em; line-height: 1.5em; }
+sup { vertical-align: super; line-height: .1em}
+pre { padding-left: 1em; box-sizing: border-box; }
+
+h1.fronttitle {
+        font-size:3em;
+        line-height: 2em;
+        margin-bottom: 0em;
+        text-align: left;
+        font-family: "Georgia";
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: 0;
+        padding-right: 0;
+        font-size: 2em;
+}
+
+h1.title {
+        font-size:1.5em;
+        line-height: 1em;
+        margin-top: .5em;
+        margin-bottom: .5em;
+        text-align: center;
+        max-width: none;
+}
+
+h1 {
+        line-height:1em;
+        font-size:1.5em;
+        font-weight:normal;
+        margin:0 0 1em 0;
+}
+h2 {
+        font-size:1.1667em;
+        line-height: 1.286em;
+        margin:1.929em 0 0.643em 0;
+        font-weight:normal;
+}
+
+:link { color: #68693F; text-decoration: none; border-bottom: 1px dotted #ccc;}
+:visited { color: #68693F; text-decoration: none; }
+
+h1.title a:link, h1.title a:visited, h1.fronttitle a:link, h1.fronttitle a:visited { 
+    background-color: #9470db2b;
+    padding: .3em; 
+    padding-top: 3em; 
+    text-decoration: none; 
+    color: #9370db; 
+    font-weight: bold; 
+    text-transform: uppercase; 
+    letter-spacing: .1em; 
+    font-family: "Thomas Paine", Georgia; 
+    border-bottom: none;
+}
+#banner { margin-left: 8em; }
+.content { }
+hr { border: 1px;}
+hr:after { content: ""; }
+hr + p:first-letter { font-size: 3em; line-height: 1em; margin-right: 2px; display: block; float: left}
+
+.comment { color: #666;}
+.posted { text-align: left; color: #666; font-style: italic; }
+.posted :link, .posted :visited { text-decoration: none; color: #666; border-bottom: 1px dotted;}
+td { vertical-align: top;}
+h2.posttitle :link, h2.posttitle :visited { text-decoration: none; color: black;}
+
+.byline { text-align: left; color: #888; margin-right: 1em;}
+.byline :link, .byline :visited { color: #666; text-decoration: none; background: #e6e6fa;}
+table.main { max-width: 100%; width: 100%; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; border-collapse: collapse; }
+td.content { padding-left: 0; width: 100%; vertical-align: top; }
+.sidebar { padding-left: 4em; text-align: left; color: #777; padding-right: .5em; max-width: 20em; float: right;}
+.sidebar :link, .sidebar :visited { color: #8B8A64; text-decoration: none; border-bottom: 1px dotted;}
+
+#comments_show :link, #comments_show :visited, .box :link, .box :visited { color: #555; text-decoration: none; background-color: #D2D6BC; padding: .5em; margin: -.5em; border-bottom: none;}
+blockquote { margin-left: 2em; }
+
+ul, ol { margin-left: 3em;}
+.footnotes ol { margin-left: 1.5em; }
+.footnotes hr { border-top: 1px solid #D2D6BC;  width: 8em; height: 0px; margin-left: 0; margin-top: 0; margin-bottom: 1.5em; padding-top: -1px; padding-bottom: 0px; }
+div.footnotes { color: #666; padding-top: 0;}
+
+.epigraph { padding-left: 10%; color: #666;  }
+.attribution { text-align: left; font-style: italic;}
+
+.footertag { float: right; padding-right: 2em; }
+
+@media (max-width: 640px) {
+	body {
+		padding-left: 1em;
+		padding-right: 1em;
+	}
+	html>body {
+		font-size: 16px;
+	}
+	h1.fronttitle,
+	h1.title {
+		max-width: 500px;
+		width: 100%;
+		margin-left: auto;
+		margin-right: auto;
+		box-sizing: border-box;
+	}
+	h1.fronttitle a:link,
+	h1.fronttitle a:visited,
+	h1.title a:link,
+	h1.title a:visited {
+		padding-top: 1em;
+		display: inline-block;
+	}
+	ul, ol {
+		margin-left: 1.5em;
+	}
+	blockquote {
+		margin-left: 1em;
+	}
+	.sidebar {
+		float: none;
+		padding-left: 0;
+		max-width: none;
+	}
+	#banner {
+		margin-left: 0;
+	}
+	.footertag {
+		float: none;
+		padding-right: 0;
+	}
+	.epigraph {
+		padding-left: 0;
+	}
+	.content-panel pre,
+	.content-panel pre code {
+		white-space: pre-wrap;
+		overflow-wrap: break-word;
+	}
+}
+
+/* code block css */
+pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 1em;
+  box-sizing: border-box;
+}
+code.hljs {
+  padding: 3px 5px
+}
+/*!
+  Theme: GitHub
+  Description: Light theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-light
+  Current colors taken from GitHub's CSS
+*/
+.hljs {
+  color: #352b45;
+  background: #9470db2b 
+}
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #9370db
+}
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #6f42c1;
+  font-weight: bold;
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #8b7fd9
+}
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  color: #5d4a7a
+}
+.hljs-built_in,
+.hljs-symbol {
+  color: #ab6bd6
+}
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  color: #8f82a8
+}
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  color: #7e6bae
+}
+.hljs-subst {
+  color: #3d3548
+}
+.hljs-section {
+  color: #8b7fd9;
+  font-weight: bold
+}
+.hljs-bullet {
+  color: #7a6b8f
+}
+.hljs-emphasis {
+  color: #352b45;
+  font-style: italic
+}
+.hljs-strong {
+  color: #352b45;
+  font-weight: bold
+}
+.hljs-addition {
+  color: #a394c7;
+  background-color: #f3effa
+}
+.hljs-deletion {
+  color: #a8789c;
+  background-color: #f7eef3
+}
+.hljs-char.escape_,
+.hljs-link,
+.hljs-params,
+.hljs-property,
+.hljs-punctuation,
+.hljs-tag {
+  color: #9488b0
+}
+
+/* jukebox: baked AI runs, one details per model */
+.runcell {
+  border-left: 3px solid #d2d6bc;
+  padding-left: 1em;
+  margin: 1.5em 0;
+}
+.run-body {
+  margin: 0.75em 0;
+}
