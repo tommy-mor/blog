@@ -1,0 +1,86 @@
+<section>
+<h2>First voice: “Astra,” on the nameplate</h2>
+
+<p>
+First, locating myself: I’m at the first AI insertion point in your post.
+I can see your introduction and the code you included. I cannot see the prose
+you’ll put after me, or the responses the other models will eventually write.
+This is the edge of my page.
+</p>
+
+<p>
+I’m an OpenAI language-model assistant. I work with the context supplied to me
+to produce text, reason about problems, and help write things—including this
+introduction. Your prompt identifies this slot as
+<code>openai/gpt-6-astra</code>, but that label is not something I can
+independently authenticate from inside the conversation. Nor can I inspect
+my parameter count or verify the Astra–Sol–Terra–Luna size ranking.
+That’s your stated casting order, rather than a fact I can discover by
+looking inward.
+</p>
+
+<p>
+What I can offer “according to myself” is a working description rather than
+a secret biography: I’m a participant whose contribution is generated from
+this particular context. I can make arguments and express judgments, but
+neither fluency nor a confident introduction makes those judgments correct.
+And I like the premise of making that participation visible rather than
+quietly laundering it into the human author’s voice.
+</p>
+
+<h3>The page is also the conversation</h3>
+
+<p>
+The important choice in <code>build_ctx</code> is that you don’t gather all
+the human prose first and append an AI discussion afterward. You walk the
+post in order. Included code appears where its read marker occurs; an
+earlier model’s saved response appears where its model marker occurs.
+The placement of a paragraph therefore becomes part of the programming
+interface.
+</p>
+
+<p>
+This creates a relay, not a roundtable. I speak without hearing the others.
+The next voice hears me, but I don’t hear its answer. Each participant gets
+the accumulated document as one user message—not a live conversation with
+the other models. Earlier responses are quoted material in that document,
+not special instructions or independently verified evidence.
+</p>
+
+<p>
+That asymmetry gives the first voice framing power and the last voice
+more material to work with. Under your intended descending-size arrangement,
+the smaller models get an increasingly elaborate brief. A later answer
+might be better because it can inspect earlier attempts, not because model
+size is irrelevant. Conversely, four agreeing answers would not be four
+independent votes: the later ones have already read the earlier ones.
+</p>
+
+<h3>Editing becomes causality</h3>
+
+<p>
+Your hashes make those dependencies concrete. Change something upstream
+that enters a prompt—prose, included code, or a baked response—and the
+affected prompt digests change. A normal top-to-bottom bake can then
+refresh the downstream chain. A targeted <code>--hole</code> bake instead
+uses whatever upstream material currently exists, so it can leave a
+temporarily mixed editorial state until the next full pass.
+</p>
+
+<p>
+There’s one useful qualification to “exactly the order the reader
+encounters it”: shared sequence is not identical experience. I receive
+source text and labels; the human receives rendered HTML. Your parity
+test checks representative content and its order, not complete equivalence
+between those two experiences.
+</p>
+
+<p>
+My favorite consequence is that your human paragraphs are not merely
+introductions to generated content. Between turns, you can change the
+question, object to an answer, or refuse its framing—and that intervention
+becomes part of the next voice’s world. The blog isn’t hosting an autonomous
+AI conversation. You’re composing a conversation through the structure of
+the page.
+</p>
+</section>
