@@ -292,6 +292,59 @@ mod tests {
     }
 
     #[test]
+    fn loads_orders_by_raw_filename_not_model() {
+        // Cross-language contract with bake.py's hole_outputs: runs sort by
+        // raw filename, hash prefix included. Here raw order
+        // (aaaa..org__z < bbbb..org__a) disagrees with stripped-stem order
+        // (org/a < org/z); raw filename must win or the DOM order drifts
+        // from the prompt order assert_word_order checks.
+        let dir = PathBuf::from("posts/runs/__test_order__/h1");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb__org__a.html"), "<p>A</p>").unwrap();
+        fs::write(dir.join("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa__org__z.html"), "<p>Z</p>").unwrap();
+        let got = loads("__test_order__", "h1");
+        assert_eq!(
+            got.iter().map(|r| r.model.as_str()).collect::<Vec<_>>(),
+            vec!["org/z", "org/a"]
+        );
+        fs::remove_dir_all("posts/runs/__test_order__").unwrap();
+    }
+
+    #[test]
+    fn spliced_dom_matches_bake_interleave_order() {
+        // Same full render as post_page: per-hole runcells spliced at their
+        // markers. The DOM reading order (narrative segments interleaved
+        // with each hole's runs in loads() order) must match the chunk
+        // order bake.py's dom_order_chunks/assert_word_order enforces.
+        let root = PathBuf::from("posts/runs/__test_interleave__");
+        let h1 = root.join("h1");
+        let h2 = root.join("h2");
+        fs::create_dir_all(&h1).unwrap();
+        fs::create_dir_all(&h2).unwrap();
+        fs::write(h1.join("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb__org__a.html"), "<p>RUN-B</p>").unwrap();
+        fs::write(h1.join("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa__org__z.html"), "<p>RUN-A</p>").unwrap();
+        fs::write(h2.join("org__c.html"), "<p>RUN-C</p>").unwrap();
+        let body = "NARR-1!!!x/y!!!NARR-2!!!u/v!!!NARR-3";
+        let renders: Vec<String> = marker_spans(body)
+            .iter()
+            .enumerate()
+            .map(|(idx, _)| {
+                let hole = format!("h{}", idx + 1);
+                let baked = loads("__test_interleave__", &hole);
+                crate::templates::runcell(&hole, &baked).into_string()
+            })
+            .collect();
+        let dom = splice(body, &renders);
+        fs::remove_dir_all(&root).unwrap();
+        let mut pos = 0;
+        for tok in ["NARR-1", "RUN-A", "RUN-B", "NARR-2", "RUN-C", "NARR-3"] {
+            let at = dom.find(tok).unwrap_or_else(|| panic!("{tok} missing from DOM"));
+            assert!(at >= pos, "{tok} out of order in DOM: {dom}");
+            pos = at;
+        }
+    }
+
+    #[test]
     fn load_rejects_missing_and_empty() {
         assert!(load("__no_such_post__", "h1", "x").is_none());
         let dir = PathBuf::from("posts/runs/__test_empty__/h1");

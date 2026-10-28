@@ -1,175 +1,136 @@
 #!/usr/bin/env python3
-"""Bake model runs: ./bake.py post.html [--hole N | --all] [--override]
+"""Bake one AI turn per !!!org/model!!! marker in a blog post.
 
-Each run lives at posts/runs/<slug>/h<i>/<md5>__<model>.html, where <md5>
-is the hash of the prompt. The prompt is everything above the marker --
-narrative plus all baked AI outputs above it, so every model sees what
-the earlier models said. Re-running with unchanged input is a cache hit
-(skipped); changed input bakes fresh and prunes only that model's stale
-file. A hole can hold a comparison drawer of several models.
+    ./bake.py post.html [--hole N] [--override] [--dry-run]
+
+Each marker names its model. The prompt is this script, then the prose
+above the marker interleaved with every earlier baked turn -- exactly the
+order the reader encounters them (self-tested at load, banner in the
+prompt). Runs live at posts/runs/<post>/h<N>/<md5>__<model>.html; the
+md5 covers the whole prompt, so an edited upstream turn changes every
+downstream digest, and a plain run rebakes exactly the stale tail.
 """
-import argparse
-import hashlib
-import json
-import os
-import re
-import sys
+import argparse, hashlib, json, os, re, shutil, sys, urllib.request, urllib.error
 from pathlib import Path
 
 API = "https://openrouter.ai/api/v1/chat/completions"
-MARKER = re.compile(r'!!!(.+?)!!!')
-MODEL = re.compile(r'[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+')
-HASHED = re.compile(r'^([0-9a-f]{32})__(.+)$')
+MARKER = re.compile(r"!!!(.+?)!!!")
+MODEL = re.compile(r"[\w.\-]+/[\w.\-]+")
+HASHED = re.compile(r"^[0-9a-f]{32}__")
 
 
 def key() -> str:
     if k := os.environ.get("OPENROUTER_KEY"):
         return k
     env = Path(__file__).with_name(".env")
-    if env.exists():
-        for line in env.read_text().splitlines():
-            k, _, v = line.partition("=")
-            if k.strip() == "OPENROUTER_KEY":
-                return v.strip().strip("\"'")
+    for line in (env.read_text().splitlines() if env.exists() else []):
+        a, _, b = line.partition("=")
+        if a.strip() == "OPENROUTER_KEY":
+            return b.strip().strip("\"'")
     sys.exit("set OPENROUTER_KEY or add it to .env")
 
 
-def run(k: str, model: str, prompt: str) -> str:
-    import urllib.request
-    import urllib.error
-    def post(payload: dict) -> dict:
-        req = urllib.request.Request(API, data=json.dumps(payload).encode(), headers={
-            "Authorization": f"Bearer {k}", "Content-Type": "application/json",
-            "HTTP-Referer": "https://tommy.isnt.online", "X-Title": "blog jukebox bake"})
-        try:
-            with urllib.request.urlopen(req, timeout=300) as r:
-                return json.load(r)
-        except urllib.error.HTTPError as e:
-            try:
-                detail = e.read().decode()[:500]
-            except Exception:
-                detail = ""
-            sys.exit(f"openrouter {e.code} for {model}: {detail}")
-    out = post({"model": model, "reasoning": {"effort": "high"},
-                "messages": [{"role": "user", "content": prompt}]})
-    msg = out["choices"][0]["message"]
-    if not (msg.get("content") or "").strip():
-        # Model ignored reasoning and returned nothing usable; retry plain.
-        out = post({"model": model, "messages": [{"role": "user", "content": prompt}]})
-        msg = out["choices"][0]["message"]
-    return msg["content"]
+def call(k: str, model: str, prompt: str) -> str:
+    """The LLM call: one user message, thinking on, content back."""
+    req = urllib.request.Request(API, headers={
+        "Authorization": f"Bearer {k}", "Content-Type": "application/json",
+        "HTTP-Referer": "https://tommy.isnt.online", "X-Title": "blog jukebox bake"},
+        data=json.dumps({"model": model, "reasoning": {"effort": "high"},
+                         "messages": [{"role": "user", "content": prompt}]}).encode())
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            return json.load(r)["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        sys.exit(f"openrouter {e.code} for {model}: {e.read().decode()[:300]}")
 
 
-def holes(post: str):
-    """Yield (marker_no, model, marker_start) per !!!model!!! block.
-
-    The block names its model (e.g. !!!openai/gpt-6-luna!!!), which must
-    look like an openrouter id (org/name).
-    """
-    out = []
-    for n, m in enumerate(MARKER.finditer(post), start=1):
-        model = m.group(1).strip()
-        if not MODEL.fullmatch(model):
-            sys.exit(f"h{n}: !!!{model}!!! doesn't look like an openrouter model (want org/name)")
-        out.append((n, model, m.start()))
-    return out
-
-
-def build_ctx(post: str, start: int, slug: str, hole_no: int) -> str:
-    """Prompt for a hole: the bake script itself first, then the narrative
-    above the marker plus every baked AI output above it, so each model
-    sees the code generating it and what the earlier models said."""
-    chunks = []
-    for gen in sorted(Path(".").glob("bake*.py")):
-        chunks.append(f"--- {gen.name} (the script baking you) ---\n{gen.read_text().strip()}")
-    ctx = MARKER.sub("", post[:start]).strip()
-    if ctx:
-        chunks.append(ctx)
-    for i in range(1, hole_no):
-        idir = Path("posts/runs") / slug / f"h{i}"
-        if not idir.is_dir():
-            continue
-        for path in sorted(idir.glob("*.html")):
-            m = HASHED.match(path.stem)
-            model = (m.group(2) if m else path.stem).replace("__", "/")
-            text = path.read_text().strip()
-            if text:
-                chunks.append(f"--- baked h{i} ({model}) ---\n{text}")
-    return "\n\n".join(chunks).strip()
+def build_ctx(post: str, start: int, slug: str) -> str:
+    """The context buildup: this script first, then prose and baked turns
+    interleaved at marker positions -- the reader's exact order."""
+    me = Path(__file__).name
+    chunks = [f"--- {me} (the script baking you) ---\n{Path(__file__).read_text().strip()}"]
+    narr = MARKER.split(post[:start])[::2]  # odd slots are captured model ids
+    for k, seg in enumerate(narr):
+        if seg.strip():
+            chunks.append(seg.strip())
+        if k + 1 < len(narr):  # the turns baked at hole k+1 belong right here
+            d = Path("posts/runs") / slug / f"h{k + 1}"
+            for p in (sorted(d.glob("*.html")) if d.is_dir() else []):
+                if t := p.read_text().strip():
+                    model = HASHED.sub("", p.stem).replace("__", "/")
+                    chunks.append(f"--- baked h{k + 1} ({model}) ---\n{t}")
+    ctx = "\n\n".join(chunks).strip()
+    return (f"[{me}: self-tested at launch -- this prompt is in exactly the "
+            f"order the reader encounters it, prose and AI turns interleaved]\n\n{ctx}")
 
 
-def existing_runs(outdir: Path):
-    """Map model_enc -> list of (md5_or_None, path) for baked files."""
-    found = {}
-    if not outdir.is_dir():
-        return found
-    for path in sorted(outdir.glob("*.html")):
-        stem = path.stem
-        m = HASHED.match(stem)
-        md5, model_enc = (m.group(1), m.group(2)) if m else (None, stem)
-        found.setdefault(model_enc, []).append((md5, path))
-    return found
+# Self-test at load: the interleave must put each hole's turns after the
+# prose above it, leak nothing below the hole, and leak no captured model
+# ids -- regression-guarding the re.split bug that once shipped two
+# shelves (all prose, then all turns) instead of the published exchange.
+def _selftest() -> None:
+    a, b, c = ("PROSE-" + x for x in ("ONE", "TWO", "THREE"))
+    r1, r2, xa, xb = "RUN-" + "ONE", "RUN-" + "TWO", "x" + "/a", "x" + "/b"
+    root = Path("posts/runs") / "__bake_selftest__"
+    try:
+        (root / "h1").mkdir(parents=True, exist_ok=True)
+        (root / "h1" / "m__a.html").write_text(r1)
+        (root / "h2").mkdir(parents=True, exist_ok=True)
+        (root / "h2" / "m__b.html").write_text(r2)
+        bang = "!" * 3
+        post = bang.join((a, xa, b, xb, c))
+        ctx = build_ctx(post, list(MARKER.finditer(post))[1].start(), "__bake_selftest__")
+        order = [ctx.find(t) for t in (a, r1, b)]
+        assert -1 not in order and order == sorted(order), "not interleaved in reader order"
+        assert r2 not in ctx and c not in ctx, "leaks text below the hole"
+        assert xa not in ctx and xb not in ctx, "captured model ids leak as chunks"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
-def prune_stale(outdir, keep):
-    """One run per hole: drop every other baked file in the hole dir."""
-    if not outdir.is_dir():
-        return
-    for path in sorted(outdir.glob("*.html")):
-        if path != keep:
-            path.unlink()
-
-
-def bake_one(slug, hole_no, model, ctx, outdir, override, k):
-    model_enc = model.replace("/", "__")
-    if not ctx:
-        sys.exit(f"h{hole_no}: empty context")
-    prompt = f"you are {model}\n\n{ctx}"
-    digest = hashlib.md5(prompt.encode()).hexdigest()
-    current = existing_runs(outdir).get(model_enc, [])
-    hit = next((p for md5, p in current if md5 == digest), None)
-    if hit is not None and not override:
-        print(f"h{hole_no}/{model}: cached ({digest[:12]}...), skipping")
-        keep = hit
-    else:
-        outdir.mkdir(parents=True, exist_ok=True)
-        print(f"h{hole_no}/{model}: baking ({len(prompt)} chars) ...", flush=True)
-        text = run(k, model, prompt).strip() + "\n"
-        keep = outdir / f"{digest}__{model_enc}.html"
-        keep.write_text(text)
-        print(f"h{hole_no}/{model}: wrote {keep}")
-        print(text)
-    prune_stale(outdir, keep)
+_selftest()
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Bake AI runs for a blog post; model comes from !!!model!!! blocks in the file.")
+    ap = argparse.ArgumentParser(description="Bake AI turns for !!!org/model!!! markers.")
     ap.add_argument("post", help="post .html file")
-    ap.add_argument("--hole", type=int, default=None, help="bake only this !!!model!!! block (1-based); default bakes every block")
-    ap.add_argument("--all", action="store_true", help="bake every !!!model!!! block in the file (the default)")
-    ap.add_argument("--override", action="store_true", help="rebake even on cache hit")
+    ap.add_argument("--hole", type=int, help="bake only this marker (1-based), using upstream turns as-is")
+    ap.add_argument("--override", action="store_true", help="rebake even when nothing changed")
+    ap.add_argument("--dry-run", action="store_true", help="print each prompt instead of baking")
     args = ap.parse_args()
 
-    if args.hole is not None and args.all:
-        ap.error("--hole and --all are mutually exclusive")
+    post, slug = Path(args.post).read_text(), Path(args.post).stem
+    holes = []
+    for m in MARKER.finditer(post):
+        model = m.group(1).strip()
+        if MODEL.fullmatch(model):
+            holes.append((len(holes) + 1, model, m.start()))
+    if not holes:
+        sys.exit(f"{slug}: no !!!org/model!!! markers")
+    if args.hole is not None and not 1 <= args.hole <= len(holes):
+        sys.exit(f"h{args.hole} missing (found {len(holes)})")
+    selected = holes[args.hole - 1 : args.hole] if args.hole else holes
 
-    post = Path(args.post).read_text()
-    slug = Path(args.post).stem
-    found = holes(post)
-    if not found:
-        sys.exit(f"{slug}: no !!!model!!! blocks")
-    if args.hole is not None:
-        if not 1 <= args.hole <= len(found):
-            sys.exit(f"hole h{args.hole} missing (found {len(found)})")
-        selected = [found[args.hole - 1]]
-    else:
-        selected = found
-
-    k = key()
+    k = None if args.dry_run else key()
     for n, model, start in selected:
-        ctx = build_ctx(post, start, slug, n)
+        prompt = f"you are {model}\n\n{build_ctx(post, start, slug)}"
+        digest = hashlib.md5(prompt.encode()).hexdigest()
+        if args.dry_run:
+            print(f"--- dry run h{n}/{model} ({digest[:12]}) ---\n{prompt}")
+            continue
         outdir = Path("posts/runs") / slug / f"h{n}"
-        bake_one(slug, n, model, ctx, outdir, args.override, k)
+        old = list(outdir.glob("*.html")) if outdir.is_dir() else []
+        if old and old[0].stem.startswith(digest) and not args.override:
+            print(f"h{n}/{model}: fresh ({digest[:12]}), skipping")
+            continue
+        print(f"h{n}/{model}: baking ({len(prompt)} chars) ...", flush=True)
+        text = call(k, model, prompt).strip() + "\n"
+        outdir.mkdir(parents=True, exist_ok=True)
+        for p in old:
+            p.unlink()
+        out = outdir / f"{digest}__{model.replace('/', '__')}.html"
+        out.write_text(text)
+        print(f"h{n}/{model}: wrote {out}\n{text}")
 
 
 if __name__ == "__main__":
